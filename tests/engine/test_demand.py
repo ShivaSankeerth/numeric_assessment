@@ -88,7 +88,11 @@ def test_buy_probability_is_capped_before_buy_prob_effects(cfg: Config) -> None:
 
 
 def test_buy_probability_floor_and_monotonic_in_price(cfg: Config) -> None:
-    assert buy_probability(0.0, 1.0, 0.3, [], cfg) == pytest.approx(cfg.demand.base_prob)
+    # the floor applies in full at the fair price, even for terrible lemonade...
+    assert buy_probability(1.0, 0.0, 0.3, [], cfg) == pytest.approx(cfg.demand.base_prob)
+    # ...but fades with the price factor, so nobody buys at twice the fair price or more
+    assert buy_probability(0.5, 0.0, 0.3, [], cfg) == pytest.approx(cfg.demand.base_prob / 2)
+    assert buy_probability(0.0, 1.0, 1.0, [], cfg) == 0.0
     probs = [buy_probability(price_factor(p, 50, cfg), 0.8, 0.3, [], cfg) for p in range(5, 200, 5)]
     assert probs == sorted(probs, reverse=True)
 

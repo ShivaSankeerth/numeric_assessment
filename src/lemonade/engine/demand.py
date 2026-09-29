@@ -4,8 +4,11 @@ traffic      = base_traffic * prod(TRAFFIC mul) + sum(TRAFFIC add)
 fair_price   = base_fair_price * prod(PRICE_TOLERANCE mul) + sum(PRICE_TOLERANCE add)
 price_factor = clamp(1 - (price - fair) / fair, 0, max_price_factor)
 taste        = clamp(recipe_score * prod(TASTE mul) + sum(TASTE add), 0, 1)
-buy_prob     = clamp(base + scale * price_factor * taste * (offset + rep), 0, max_buy_prob)
-               * prod(BUY_PROB mul) + sum(BUY_PROB add), clamped to [0, 1]
+buy_prob     = clamp(base * min(price_factor, 1) + scale * price_factor * taste * (offset + rep),
+                     0, max_buy_prob) * prod(BUY_PROB mul) + sum(BUY_PROB add), clamped to [0, 1]
+
+The `base` floor shrinks with the price factor, so nobody buys at twice the fair price or more.
+Without that, the floor made any price sell to 10% of passers-by and $10 cups dominated.
 """
 
 from __future__ import annotations
@@ -118,9 +121,14 @@ def recipe_score(recipe: Recipe, temp_f: int, cfg: Config) -> tuple[float, tuple
 def buy_probability(
     pf: float, taste: float, reputation: float, effects: Iterable[Effect], cfg: Config
 ) -> float:
-    """Chance that one passing customer buys a cup (see module docstring)."""
+    """Chance that one passing customer buys a cup (see module docstring).
+
+    The `base_prob` floor applies in full at or below the fair price and fades to 0 at twice the
+    fair price (price factor 0), so there is always a price above which nobody buys.
+    """
     d = cfg.demand
-    base = d.base_prob + d.prob_scale * pf * taste * (d.reputation_offset + reputation)
+    floor = d.base_prob * min(pf, 1.0)
+    base = floor + d.prob_scale * pf * taste * (d.reputation_offset + reputation)
     mul, add = combine(effects, Factor.BUY_PROB)
     return _clamp(_clamp(base, 0.0, d.max_buy_prob) * mul + add, 0.0, 1.0)
 
