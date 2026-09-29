@@ -23,13 +23,22 @@ from lemonade.engine.types import Item, Weather
 
 @cache
 def default_cfg() -> Config:
-    """The packaged content config with daily supplier price fluctuation and shortages OFF.
+    """The packaged content config with daily supplier price fluctuation, shortages and
+    achievements OFF.
 
     Loaded once per test session. Fixed base prices keep money assertions stable (e.g. the UI's
-    "Cart: $11.00"); the real game (`load_config()`) has both ON. Test them via `market_cfg()`.
+    "Cart: $11.00") and no achievements keep screens predictable; the real game (`load_config()`)
+    has all of them ON. Test them via `market_cfg()` / `achievements_cfg()`.
     """
     cfg = load_config()
-    return replace(cfg, market=replace(cfg.market, fluctuation=False, shortages=False))
+    market = replace(cfg.market, fluctuation=False, shortages=False)
+    return replace(cfg, market=market, achievements={})
+
+
+@cache
+def achievements_cfg() -> Config:
+    """`default_cfg()` (fixed prices) with the packaged achievements switched back on."""
+    return replace(default_cfg(), achievements=load_config().achievements)
 
 
 def market_cfg(**market_overrides: Any) -> Config:

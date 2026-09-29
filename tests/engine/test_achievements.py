@@ -3,7 +3,7 @@ from dataclasses import replace
 
 import pytest
 
-from factories import make_inventory, make_plan, make_state
+from factories import achievements_cfg, make_inventory, make_plan, make_state
 from lemonade.engine.achievements import is_met, newly_unlocked, unlock
 from lemonade.engine.config import Config, parse_config, read_raw_content
 from lemonade.engine.errors import ConfigError
@@ -11,6 +11,12 @@ from lemonade.engine.game import end_day, play_day
 from lemonade.engine.models import DayResult, Recipe
 from lemonade.engine.simulation import simulate_day
 from lemonade.engine.types import AchievementKind, GameStatus
+
+
+@pytest.fixture
+def cfg() -> Config:
+    return achievements_cfg()
+
 
 STOCK = {"lemon": 60, "sugar": 40, "ice": 600, "cup": 200}
 

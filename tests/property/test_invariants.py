@@ -14,7 +14,7 @@ from lemonade.engine.types import GameStatus, Item
 from strategies import plan_sequences, seeds
 
 CFG = default_cfg()
-REAL_CFG = load_config()  # fluctuating prices and shortages ON
+REAL_CFG = load_config()  # fluctuating prices, shortages and achievements ON
 FAST = settings(max_examples=50, deadline=None)
 
 
@@ -100,6 +100,6 @@ def test_invariants_hold_with_fluctuating_prices(seed: int, plans: list[DayPlan]
 @FAST
 @given(seeds, plan_sequences)
 def test_achievements_are_never_removed(seed: int, plans: list[DayPlan]) -> None:
-    for before, _, after, result in play(seed, plans):
+    for before, _, after, result in play(seed, plans, REAL_CFG):
         assert before.achievements <= after.achievements
         assert after.achievements - before.achievements == set(result.achievements_unlocked)
