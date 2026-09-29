@@ -21,12 +21,13 @@ from textual.widgets import (
     TabPane,
 )
 
-from lemonade.engine import market
+from lemonade.engine import dates, market
 from lemonade.engine.demand import recipe_score
 from lemonade.engine.game import preview_plan
 from lemonade.engine.models import DayPlan, Purchase, Recipe
 from lemonade.engine.types import Item
 from lemonade.ui.format import fmt_cents, fmt_pct, parse_cents
+from lemonade.ui.screens.game_over import difficulty_name
 
 if TYPE_CHECKING:
     from lemonade.engine.config import Config
@@ -203,9 +204,12 @@ class PlanScreen(Screen[None]):
 
     def refresh_view(self) -> None:
         state, cfg = self.lemonade.state, self.lemonade.cfg
+        level = difficulty_name(state, cfg)
         self.query_one("#status", Static).update(
-            f"[b]Day {state.day}[/b]\nCash: [b]{fmt_cents(state.cash)}[/b]\n"
+            f"[b]Day {state.day}[/b] · {dates.day_name(state.day, cfg)}\n"
+            f"Cash: [b]{fmt_cents(state.cash)}[/b]\n"
             f"Reputation: {fmt_pct(state.reputation)}"
+            + (f"\nDifficulty: {level}" if state.difficulty != "normal" else "")
         )
         stock = "\n".join(
             f"{item.value.capitalize():<6} {state.inventory.count(item):>5}" for item in Item
@@ -214,6 +218,7 @@ class PlanScreen(Screen[None]):
         fc = state.forecast
         self.query_one("#forecast", Static).update(
             f"[b]Forecast[/b]\n{fc.predicted.value.capitalize()}, {fc.predicted_temp_f}°F"
+            + self._calendar_note()
         )
         prices = market.todays_pack_prices(state, cfg)
         for item in Item:
@@ -223,6 +228,13 @@ class PlanScreen(Screen[None]):
             "\n".join(f"• {n}" for n in notes) if notes else "Market: normal prices today."
         )
         self.refresh_cart()
+
+    def _calendar_note(self) -> str:
+        day, cfg = self.lemonade.state.day, self.lemonade.cfg
+        holiday = dates.holiday_name(day, cfg)
+        if holiday:
+            return f"\n[b #f5d547]{holiday}![/]"
+        return "\nWeekend crowds" if dates.is_weekend(day, cfg) else ""
 
     def _refresh_lines(self) -> None:
         state, cfg = self.lemonade.state, self.lemonade.cfg
