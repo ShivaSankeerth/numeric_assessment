@@ -26,23 +26,26 @@ class SalesOutcome:
     stop_reason: StopReason | None
 
 
-def _cannot_serve(inv: Inventory, recipe: Recipe, pitcher_cups: int) -> StopReason | None:
+def _cannot_serve(stock: dict[Item, int], recipe: Recipe, pitcher_cups: int) -> StopReason | None:
     """Why the next cup can't be served (checked cup, ice, then pitcher ingredients)."""
-    if inv.count(Item.CUP) < 1:
+    if stock[Item.CUP] < 1:
         return StopReason.SOLD_OUT_CUPS
-    if inv.count(Item.ICE) < recipe.ice_per_cup:
+    if stock[Item.ICE] < recipe.ice_per_cup:
         return StopReason.SOLD_OUT_ICE
     if pitcher_cups == 0:
-        if inv.count(Item.LEMON) < recipe.lemons_per_pitcher:
+        if stock[Item.LEMON] < recipe.lemons_per_pitcher:
             return StopReason.SOLD_OUT_LEMONS
-        if inv.count(Item.SUGAR) < recipe.sugar_per_pitcher:
+        if stock[Item.SUGAR] < recipe.sugar_per_pitcher:
             return StopReason.SOLD_OUT_SUGAR
     return None
 
 
-def _use(inv: Inventory, consumed: dict[Item, int], item: Item, qty: int) -> Inventory:
-    consumed[item] += qty
-    return inventory.consume(inv, item, qty)
+def _write_back(inv: Inventory, consumed: dict[Item, int]) -> Inventory:
+    """Apply the day's total consumption once (FIFO, so identical to consuming per cup)."""
+    for item, qty in consumed.items():
+        if qty:
+            inv = inventory.consume(inv, item, qty)
+    return inv
 
 
 def sell(
@@ -57,25 +60,31 @@ def sell(
 
     Every customer rolls buy/no-buy (so RNG use doesn't depend on stock). After a stop,
     would-be buyers are counted as SOLD_OUT. Invariant: sold + sum(lost) == customers.
+    Stock is tracked as plain counters and written back to the batches once at the end.
     """
+    stock = {item: inv.count(item) for item in Item}
     consumed = {item: 0 for item in Item}
     lost = {reason: 0 for reason in LossReason}
+    no_sale = loss_reason(breakdown, cfg)
+    per_pitcher = {Item.LEMON: recipe.lemons_per_pitcher, Item.SUGAR: recipe.sugar_per_pitcher}
+    per_cup = {Item.ICE: recipe.ice_per_cup, Item.CUP: 1}
+    buy_prob, roll = breakdown.buy_prob, rng.random
     sold, pitcher_cups = 0, 0
     stop: StopReason | None = None
     for _ in range(customers):
-        if rng.random() >= breakdown.buy_prob:
-            lost[loss_reason(breakdown, cfg)] += 1
+        if roll() >= buy_prob:
+            lost[no_sale] += 1
             continue
-        stop = stop or _cannot_serve(inv, recipe, pitcher_cups)
+        stop = stop or _cannot_serve(stock, recipe, pitcher_cups)
         if stop is not None:
             lost[LossReason.SOLD_OUT] += 1
             continue
-        if pitcher_cups == 0:
-            inv = _use(inv, consumed, Item.LEMON, recipe.lemons_per_pitcher)
-            inv = _use(inv, consumed, Item.SUGAR, recipe.sugar_per_pitcher)
+        uses = per_cup if pitcher_cups else {**per_cup, **per_pitcher}
+        if not pitcher_cups:
             pitcher_cups = cfg.game.cups_per_pitcher
-        inv = _use(inv, consumed, Item.ICE, recipe.ice_per_cup)
-        inv = _use(inv, consumed, Item.CUP, 1)
+        for item, qty in uses.items():
+            stock[item] -= qty
+            consumed[item] += qty
         pitcher_cups -= 1
         sold += 1
-    return SalesOutcome(sold, inv, consumed, lost, stop)
+    return SalesOutcome(sold, _write_back(inv, consumed), consumed, lost, stop)
