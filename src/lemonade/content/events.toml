@@ -13,3 +13,9 @@ base_chance = 0.5             # per day, only when the actual weather is a storm
 name = "Town festival"
 base_chance = 0.05            # per day, any weather except storms
 traffic_mul = 1.5
+
+[inspector]
+name = "Health inspector"
+base_chance = 0.1             # per day
+fine = 500                    # cents, charged at end of day if the lemonade fails inspection
+taste_threshold = 0.4         # taste score below this fails

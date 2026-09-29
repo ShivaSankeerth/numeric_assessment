@@ -15,7 +15,7 @@ from lemonade.engine.rng import day_rng
 from lemonade.engine.types import Cents, Item
 
 
-def _dollars(cents: Cents) -> str:
+def dollars(cents: Cents) -> str:
     """Integer-only money text for error messages (UI formatting lives in ui/format.py)."""
     return f"${cents // 100}.{cents % 100:02d}"
 
@@ -157,7 +157,7 @@ def validate_plan(state: GameState, plan: DayPlan, cfg: Config) -> None:
     cost = plan_cost(state, plan, cfg)
     if cost > state.cash:
         raise InsufficientFunds(
-            f"This plan costs {_dollars(cost)} but you only have {_dollars(state.cash)}"
+            f"This plan costs {dollars(cost)} but you only have {dollars(state.cash)}"
         )
 
 
