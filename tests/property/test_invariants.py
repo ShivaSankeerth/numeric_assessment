@@ -95,3 +95,11 @@ def test_invariants_hold_with_fluctuating_prices(seed: int, plans: list[DayPlan]
         assert result.cups_sold <= cups_makeable(
             stocked.inventory, recipe, REAL_CFG.game.cups_per_pitcher
         )
+
+
+@FAST
+@given(seeds, plan_sequences)
+def test_achievements_are_never_removed(seed: int, plans: list[DayPlan]) -> None:
+    for before, _, after, result in play(seed, plans):
+        assert before.achievements <= after.achievements
+        assert after.achievements - before.achievements == set(result.achievements_unlocked)

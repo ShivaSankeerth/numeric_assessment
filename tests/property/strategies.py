@@ -36,12 +36,15 @@ random_cart = st.dictionaries(st.sampled_from(list(Item)), st.integers(1, 4), ma
 _carts = {"kit": full_kit, "random": random_cart, "empty": st.just(())}
 purchases = st.sampled_from(["kit"] * 4 + ["random", "empty"]).flatmap(lambda k: _carts[k])
 
+# Mostly no upgrade; otherwise any one upgrade from content (cheap pair to exercise stacking).
+_single_upgrades = [(up_id,) for up_id in sorted(default_cfg().upgrades)]
+
 plans = st.builds(
     DayPlan,
     purchases=purchases,
     recipe=recipes,
     price_per_cup=st.one_of(st.integers(20, 80), st.integers(_price_low, 300)),
-    upgrade_purchases=st.sampled_from([(), (), (), ("cooler",)]),
+    upgrade_purchases=st.sampled_from([(), (), (), *_single_upgrades, ("sign", "umbrella")]),
 )
 
 seeds = st.integers(0, 10_000)
