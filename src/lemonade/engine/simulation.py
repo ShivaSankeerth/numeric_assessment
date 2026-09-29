@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, replace
 
-from lemonade.engine import inventory, market, weather
+from lemonade.engine import dates, inventory, market, weather
 from lemonade.engine.config import Config
 from lemonade.engine.demand import DemandBreakdown, compute_demand, reputation_delta
 from lemonade.engine.models import DayContext, DayPlan, DayResult, Effect, GameState, Inventory
@@ -32,8 +32,8 @@ def _context(state: GameState, plan: DayPlan, cfg: Config) -> DayContext:
         plan=plan,
         weather=w,
         temp_f=temp,
-        day_of_week=(state.day - 1) % 7,
-        holiday=None,
+        day_of_week=dates.day_of_week(state.day, cfg),
+        holiday=dates.holiday_name(state.day, cfg),
         rng=day_rng(state.seed, state.day, "context"),
         cfg=cfg,
     )

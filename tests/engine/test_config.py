@@ -75,3 +75,18 @@ def test_bad_market_values_raise(raw: dict[str, Any]) -> None:
     raw["items"]["market"]["fluctuation"] = "yes"
     with pytest.raises(ConfigError, match="fluctuation"):
         parse_config(raw)
+
+
+def test_calendar_and_difficulty_validation(raw: dict[str, Any]) -> None:
+    bad = copy.deepcopy(raw)
+    bad["game"]["calendar"]["weekend_days"] = [7]
+    with pytest.raises(ConfigError, match="weekend_days"):
+        parse_config(bad)
+    bad = copy.deepcopy(raw)
+    del bad["game"]["difficulty"]["normal"]
+    with pytest.raises(ConfigError, match=r"difficulty\.normal"):
+        parse_config(bad)
+    bad = copy.deepcopy(raw)
+    bad["game"]["calendar"]["holidays"].append({"day": 4, "name": "Dup", "traffic_mul": 1.0})
+    with pytest.raises(ConfigError, match="day 4"):
+        parse_config(bad)

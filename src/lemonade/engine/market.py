@@ -54,15 +54,22 @@ def _apply_pcts(price: Cents, pcts: Iterable[int]) -> Cents:
     return (num + den // 2) // den
 
 
+def _difficulty_pct(state: GameState, cfg: Config) -> int:
+    """Supplier price change (whole percent) from the game's difficulty; 0 if unknown."""
+    level = cfg.difficulties.get(state.difficulty)
+    return level.supply_price_pct - 100 if level else 0
+
+
 def todays_pack_prices(state: GameState, cfg: Config) -> dict[Item, Cents]:
-    """Per-pack price of each item today: base price, daily fluctuation, shortage markup.
+    """Per-pack price of each item today: base, daily fluctuation, shortage, difficulty.
 
     Deterministic per (seed, day). Always use this (never `cfg.items[...].pack_price`) for prices.
     """
     today = market_day(state, cfg)
+    difficulty_pct = _difficulty_pct(state, cfg)
     prices = {}
     for item, item_cfg in cfg.items.items():
-        pcts = [today.change_pct[item]]
+        pcts = [today.change_pct[item], difficulty_pct]
         if today.shortage is item:
             pcts.append(cfg.market.shortage_markup_pct)
         prices[item] = _apply_pcts(item_cfg.pack_price, pcts)
@@ -72,11 +79,15 @@ def todays_pack_prices(state: GameState, cfg: Config) -> dict[Item, Cents]:
 def market_notes(state: GameState, cfg: Config) -> tuple[str, ...]:
     """Player-facing notes about today's supplier prices, shown on the Shop tab before buying.
 
-    Shortage first, then one note per item whose price moved, in Item order, e.g.
+    Difficulty (if not 100%), shortage, then one note per item whose price moved, e.g.
     ("Lemon shortage: lemons +50% today", "Supplier prices: sugar -8%"). Empty on a quiet day.
     """
     today = market_day(state, cfg)
     notes = []
+    difficulty_pct = _difficulty_pct(state, cfg)
+    if difficulty_pct:
+        level = cfg.difficulties[state.difficulty]
+        notes.append(f"{level.name} difficulty: all supplies {difficulty_pct:+d}%")
     if today.shortage is not None:
         name = today.shortage.value
         pct = cfg.market.shortage_markup_pct

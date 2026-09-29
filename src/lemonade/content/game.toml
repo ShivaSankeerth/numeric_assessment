@@ -38,3 +38,51 @@ hot = 1.3
 
 [weather.price_tolerance]     # fair-price multiplier; missing = 1.0
 hot = 1.2
+
+# Calendar: day 1 is a Monday. Weekend and holiday traffic are demand modifiers.
+[calendar]
+day_names = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
+weekend_days = [5, 6]         # indexes into day_names
+weekend_traffic_mul = 1.25
+
+[[calendar.holidays]]         # fixed game-day numbers
+day = 4
+name = "Independence Day"
+traffic_mul = 1.5
+
+[[calendar.holidays]]
+day = 12
+name = "Lemonade Day"
+traffic_mul = 1.4
+
+[[calendar.holidays]]
+day = 21
+name = "Midsummer"
+traffic_mul = 1.3
+
+[[calendar.holidays]]
+day = 30
+name = "End of Summer"
+traffic_mul = 1.3
+
+# Difficulty levels (game.new_game). starting_cash defaults to game.starting_cash.
+# traffic_mul shows up as a "difficulty" effect; supply_price_pct scales every supplier price.
+[difficulty.easy]
+name = "Easy"
+description = "More cash, busier streets, cheaper supplies."
+starting_cash = 3000
+traffic_mul = 1.15
+supply_price_pct = 90
+
+[difficulty.normal]
+name = "Normal"
+description = "The standard game."
+traffic_mul = 1.0
+supply_price_pct = 100
+
+[difficulty.hard]
+name = "Hard"
+description = "Less cash, quieter streets, pricier supplies."
+starting_cash = 1500
+traffic_mul = 0.85
+supply_price_pct = 115

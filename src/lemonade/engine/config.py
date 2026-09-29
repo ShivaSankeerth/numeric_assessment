@@ -73,6 +73,31 @@ class DemandConfig:
 
 
 @dataclass(frozen=True, slots=True)
+class HolidayConfig:
+    name: str
+    traffic_mul: float
+
+
+@dataclass(frozen=True, slots=True)
+class CalendarConfig:
+    """Day 1 is `day_names[0]`; the week repeats every `len(day_names)` days."""
+
+    day_names: tuple[str, ...]
+    weekend_days: frozenset[int]  # indexes into day_names
+    weekend_traffic_mul: float
+    holidays: Mapping[int, HolidayConfig]  # keyed by game day number
+
+
+@dataclass(frozen=True, slots=True)
+class DifficultyConfig:
+    name: str
+    description: str
+    starting_cash: Cents
+    traffic_mul: float
+    supply_price_pct: int  # 100 = base supplier prices
+
+
+@dataclass(frozen=True, slots=True)
 class MarketConfig:
     """Daily supplier price movement (`market.todays_pack_prices`). Percentages are whole ints."""
 
@@ -127,6 +152,8 @@ class Config:
     upgrades: Mapping[str, UpgradeConfig]
     events: Mapping[str, EventConfig]
     market: MarketConfig
+    calendar: CalendarConfig
+    difficulties: Mapping[str, DifficultyConfig]  # must include "normal"
 
 
 Table = Mapping[str, Any]
@@ -243,6 +270,49 @@ def _parse_market(t: Table) -> MarketConfig:
     )
 
 
+def _parse_calendar(t: Table) -> CalendarConfig:
+    c = _get(t, "calendar", "game")
+    names = tuple(str(n) for n in _get(c, "day_names", "calendar"))
+    if not names:
+        raise ConfigError("'calendar.day_names' must not be empty")
+    weekend = frozenset(int(d) for d in _get(c, "weekend_days", "calendar"))
+    if not weekend <= set(range(len(names))):
+        raise ConfigError(f"'calendar.weekend_days' must index day_names, got {sorted(weekend)}")
+    holidays: dict[int, HolidayConfig] = {}
+    for h in c.get("holidays", []):
+        day = int(_num(h, "day", "calendar.holidays", minimum=1))
+        if day in holidays:
+            raise ConfigError(f"two holidays on day {day}")
+        holidays[day] = HolidayConfig(
+            name=str(_get(h, "name", "calendar.holidays")),
+            traffic_mul=_num(h, "traffic_mul", "calendar.holidays"),
+        )
+    return CalendarConfig(
+        day_names=names,
+        weekend_days=weekend,
+        weekend_traffic_mul=_num(c, "weekend_traffic_mul", "calendar"),
+        holidays=holidays,
+    )
+
+
+def _parse_difficulties(t: Table, starting_cash: Cents) -> dict[str, DifficultyConfig]:
+    tables = _get(t, "difficulty", "game")
+    if "normal" not in tables:
+        raise ConfigError("missing key 'difficulty.normal'")
+    return {
+        diff_id: DifficultyConfig(
+            name=str(_get(d, "name", f"difficulty.{diff_id}")),
+            description=str(d.get("description", "")),
+            starting_cash=int(_num(d, "starting_cash", f"difficulty.{diff_id}"))
+            if "starting_cash" in d
+            else starting_cash,
+            traffic_mul=_num(d, "traffic_mul", f"difficulty.{diff_id}"),
+            supply_price_pct=int(_num(d, "supply_price_pct", f"difficulty.{diff_id}", minimum=1)),
+        )
+        for diff_id, d in tables.items()
+    }
+
+
 def _parse_weather(t: Table) -> WeatherConfig:
     w = _get(t, "weather", "game")
     ranges = _get(w, "temp_range", "weather")
@@ -299,8 +369,9 @@ def parse_config(raw: Mapping[str, Table]) -> Config:
     for name in CONTENT_FILES:
         if name not in raw:
             raise ConfigError(f"missing content file '{name}.toml'")
+    game = _parse_game(_get(raw["game"], "game", "game"))
     return Config(
-        game=_parse_game(_get(raw["game"], "game", "game")),
+        game=game,
         items=_parse_items(raw["items"]),
         demand=_parse_demand(raw["items"]),
         weather=_parse_weather(raw["game"]),
@@ -308,6 +379,8 @@ def parse_config(raw: Mapping[str, Table]) -> Config:
         upgrades=_parse_upgrades(raw["upgrades"]),
         events=_parse_events(raw["events"]),
         market=_parse_market(raw["items"]),
+        calendar=_parse_calendar(raw["game"]),
+        difficulties=_parse_difficulties(raw["game"], game.starting_cash),
     )
 
 

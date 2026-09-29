@@ -10,7 +10,7 @@ from dataclasses import replace
 
 from lemonade.engine import inventory, market, weather
 from lemonade.engine.config import Config
-from lemonade.engine.errors import GameOverError
+from lemonade.engine.errors import ConfigError, GameOverError
 from lemonade.engine.models import DayPlan, DayResult, GameState, Inventory, PlanPreview
 from lemonade.engine.recipes import effective_recipe
 from lemonade.engine.rng import day_rng
@@ -19,11 +19,18 @@ from lemonade.engine.types import GameStatus
 
 
 def new_game(seed: int, cfg: Config, difficulty: str = "normal") -> GameState:
-    """Day 1 with starting cash, empty inventory and a forecast for day 1."""
+    """Day 1 with the difficulty's starting cash, empty inventory and a forecast for day 1.
+
+    `difficulty` is a key of `cfg.difficulties` ("easy", "normal", "hard"); its traffic and
+    supplier price multipliers apply every day. Raises ConfigError for an unknown difficulty.
+    """
+    if difficulty not in cfg.difficulties:
+        known = ", ".join(sorted(cfg.difficulties))
+        raise ConfigError(f"Unknown difficulty '{difficulty}' (choose from: {known})")
     return GameState(
         seed=seed,
         day=1,
-        cash=cfg.game.starting_cash,
+        cash=cfg.difficulties[difficulty].starting_cash,
         inventory=Inventory.empty(),
         reputation=cfg.game.starting_reputation,
         upgrades=frozenset(),
