@@ -67,6 +67,21 @@ class DemandConfig:
     reputation_rate: float
     loss_price_threshold: float
     loss_taste_threshold: float
+    reputation_taste_weight: float
+    reputation_neutral: float
+    reputation_full_volume: int
+
+
+@dataclass(frozen=True, slots=True)
+class MarketConfig:
+    """Daily supplier price movement (`market.todays_pack_prices`). Percentages are whole ints."""
+
+    fluctuation: bool
+    fluctuation_pct: int
+    shortages: bool
+    shortage_chance: float
+    shortage_item: Item
+    shortage_markup_pct: int
 
 
 @dataclass(frozen=True, slots=True)
@@ -111,6 +126,7 @@ class Config:
     locations: Mapping[str, LocationConfig]
     upgrades: Mapping[str, UpgradeConfig]
     events: Mapping[str, EventConfig]
+    market: MarketConfig
 
 
 Table = Mapping[str, Any]
@@ -205,6 +221,28 @@ def _parse_demand(t: Table) -> DemandConfig:
     return DemandConfig(**{name: _num(d, name, "demand") for name in _field_names(DemandConfig)})
 
 
+def _flag(table: Table, key: str, path: str) -> bool:
+    value = _get(table, key, path)
+    if not isinstance(value, bool):
+        raise ConfigError(f"'{path}.{key}' must be true or false, got {value!r}")
+    return value
+
+
+def _parse_market(t: Table) -> MarketConfig:
+    m = _get(t, "market", "items")
+    item = _get(m, "shortage_item", "market")
+    if item not in {i.value for i in Item}:
+        raise ConfigError(f"'market.shortage_item' must be an item, got {item!r}")
+    return MarketConfig(
+        fluctuation=_flag(m, "fluctuation", "market"),
+        fluctuation_pct=int(_num(m, "fluctuation_pct", "market")),
+        shortages=_flag(m, "shortages", "market"),
+        shortage_chance=_num(m, "shortage_chance", "market"),
+        shortage_item=Item(item),
+        shortage_markup_pct=int(_num(m, "shortage_markup_pct", "market")),
+    )
+
+
 def _parse_weather(t: Table) -> WeatherConfig:
     w = _get(t, "weather", "game")
     ranges = _get(w, "temp_range", "weather")
@@ -269,6 +307,7 @@ def parse_config(raw: Mapping[str, Table]) -> Config:
         locations=_parse_locations(raw["locations"]),
         upgrades=_parse_upgrades(raw["upgrades"]),
         events=_parse_events(raw["events"]),
+        market=_parse_market(raw["items"]),
     )
 
 

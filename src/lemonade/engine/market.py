@@ -4,12 +4,14 @@ from __future__ import annotations
 
 import math
 from collections import Counter
-from dataclasses import replace
+from collections.abc import Iterable, Mapping
+from dataclasses import dataclass, replace
 
 from lemonade.engine import inventory
 from lemonade.engine.config import Config
 from lemonade.engine.errors import InsufficientFunds, InvalidPlan
 from lemonade.engine.models import DayPlan, GameState, Recipe
+from lemonade.engine.rng import day_rng
 from lemonade.engine.types import Cents, Item
 
 
@@ -18,17 +20,71 @@ def _dollars(cents: Cents) -> str:
     return f"${cents // 100}.{cents % 100:02d}"
 
 
+@dataclass(frozen=True, slots=True)
+class MarketDay:
+    """Today's supplier price adjustments (whole percents), rolled once per game day."""
+
+    change_pct: Mapping[Item, int]  # daily fluctuation per item (0 when disabled)
+    shortage: Item | None  # item marked up by `shortage_markup_pct` today, if any
+
+
+def market_day(state: GameState, cfg: Config) -> MarketDay:
+    """Roll today's fluctuation and shortage from `day_rng(seed, day, "market")`.
+
+    The shortage roll comes first so toggling fluctuation never changes whether a shortage hits.
+    Lemon shortages live here, not in EVENTS: the player must see prices before buying.
+    """
+    m = cfg.market
+    rng = day_rng(state.seed, state.day, "market")
+    short = rng.random() < m.shortage_chance
+    shortage = m.shortage_item if m.shortages and short else None
+    change = {
+        item: rng.randint(-m.fluctuation_pct, m.fluctuation_pct) if m.fluctuation else 0
+        for item in Item
+    }
+    return MarketDay(change_pct=change, shortage=shortage)
+
+
+def _apply_pcts(price: Cents, pcts: Iterable[int]) -> Cents:
+    """`price` scaled by each (100 + pct)%, with one half-up rounding at the end."""
+    num, den = price, 1
+    for pct in pcts:
+        num *= 100 + pct
+        den *= 100
+    return (num + den // 2) // den
+
+
 def todays_pack_prices(state: GameState, cfg: Config) -> dict[Item, Cents]:
-    """Per-pack price of each item today. Seam for daily price fluctuation (base prices for now)."""
-    return {item: item_cfg.pack_price for item, item_cfg in cfg.items.items()}
+    """Per-pack price of each item today: base price, daily fluctuation, shortage markup.
+
+    Deterministic per (seed, day). Always use this (never `cfg.items[...].pack_price`) for prices.
+    """
+    today = market_day(state, cfg)
+    prices = {}
+    for item, item_cfg in cfg.items.items():
+        pcts = [today.change_pct[item]]
+        if today.shortage is item:
+            pcts.append(cfg.market.shortage_markup_pct)
+        prices[item] = _apply_pcts(item_cfg.pack_price, pcts)
+    return prices
 
 
 def market_notes(state: GameState, cfg: Config) -> tuple[str, ...]:
-    """Player-facing notes about today's supplier prices (e.g. "Lemon shortage: lemons +50%").
+    """Player-facing notes about today's supplier prices, shown on the Shop tab before buying.
 
-    Shown on the Shop tab before buying. Empty until price fluctuation / shortages exist.
+    Shortage first, then one note per item whose price moved, in Item order, e.g.
+    ("Lemon shortage: lemons +50% today", "Supplier prices: sugar -8%"). Empty on a quiet day.
     """
-    return ()
+    today = market_day(state, cfg)
+    notes = []
+    if today.shortage is not None:
+        name = today.shortage.value
+        pct = cfg.market.shortage_markup_pct
+        notes.append(f"{name.capitalize()} shortage: {name}s {pct:+d}% today")
+    for item, pct in today.change_pct.items():
+        if pct:
+            notes.append(f"Supplier prices: {item.value} {pct:+d}%")
+    return tuple(notes)
 
 
 def discount_pct(item: Item, packs: int, cfg: Config) -> int:

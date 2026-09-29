@@ -23,8 +23,19 @@ from lemonade.engine.types import Item, Weather
 
 @cache
 def default_cfg() -> Config:
-    """The packaged content config, loaded once per test session."""
-    return load_config()
+    """The packaged content config with daily supplier price fluctuation and shortages OFF.
+
+    Loaded once per test session. Fixed base prices keep money assertions stable (e.g. the UI's
+    "Cart: $11.00"); the real game (`load_config()`) has both ON. Test them via `market_cfg()`.
+    """
+    cfg = load_config()
+    return replace(cfg, market=replace(cfg.market, fluctuation=False, shortages=False))
+
+
+def market_cfg(**market_overrides: Any) -> Config:
+    """`default_cfg()` with `[market]` fields overridden, e.g. `market_cfg(fluctuation=True)`."""
+    cfg = default_cfg()
+    return replace(cfg, market=replace(cfg.market, **market_overrides))
 
 
 def fixed_rng(seed: int = 0) -> random.Random:

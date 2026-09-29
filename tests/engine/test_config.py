@@ -58,3 +58,20 @@ def test_unknown_item_raises(raw: dict[str, Any]) -> None:
     raw["items"]["items"]["straw"] = {"pack_size": 1, "pack_price": 1}
     with pytest.raises(ConfigError, match="straw"):
         parse_config(raw)
+
+
+def test_market_content_loaded() -> None:
+    market = parse_config(read_raw_content()).market
+    assert market.fluctuation and market.shortages
+    assert market.shortage_item is Item.LEMON
+    assert market.shortage_markup_pct == 50
+
+
+def test_bad_market_values_raise(raw: dict[str, Any]) -> None:
+    raw["items"]["market"]["shortage_item"] = "straw"
+    with pytest.raises(ConfigError, match="shortage_item"):
+        parse_config(raw)
+    raw["items"]["market"]["shortage_item"] = "lemon"
+    raw["items"]["market"]["fluctuation"] = "yes"
+    with pytest.raises(ConfigError, match="fluctuation"):
+        parse_config(raw)

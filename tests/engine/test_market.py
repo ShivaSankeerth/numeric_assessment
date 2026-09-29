@@ -2,13 +2,14 @@ from dataclasses import replace
 
 import pytest
 
-from factories import make_inventory, make_plan, make_state
-from lemonade.engine.config import Config
+from factories import make_inventory, make_plan, make_state, market_cfg
+from lemonade.engine.config import Config, load_config
 from lemonade.engine.errors import InsufficientFunds, InvalidPlan
 from lemonade.engine.market import (
     apply_purchases,
     cost_to_make_one_cup,
     discount_pct,
+    market_day,
     market_notes,
     plan_cost,
     purchase_cost,
@@ -111,3 +112,59 @@ def test_cost_to_make_one_cup_sums_missing_packs(
 
 def test_market_notes_empty_without_fluctuation(cfg: Config) -> None:
     assert market_notes(make_state(), cfg) == ()
+
+
+def test_test_config_has_fixed_prices_but_real_game_fluctuates(cfg: Config) -> None:
+    assert not cfg.market.fluctuation and not cfg.market.shortages
+    real = load_config()
+    assert real.market.fluctuation and real.market.shortages
+    assert real.market.fluctuation_pct == 15
+    assert market_notes(make_state(), cfg) == ()
+
+
+def test_fluctuation_stays_within_bounds_and_is_deterministic() -> None:
+    cfg = market_cfg(fluctuation=True)
+    moved = []
+    for day in range(1, 40):
+        state = make_state(day=day)
+        prices = todays_pack_prices(state, cfg)
+        assert prices == todays_pack_prices(state, cfg)
+        for item, price in prices.items():
+            base = cfg.items[item].pack_price
+            assert base * 0.85 - 1 <= price <= base * 1.15 + 1
+            moved.append(price != base)
+    assert any(moved)
+
+
+def test_fluctuation_notes_match_prices() -> None:
+    cfg = market_cfg(fluctuation=True)
+    state = make_state(day=3)
+    today = market_day(state, cfg)
+    assert any(today.change_pct.values())
+    notes = market_notes(state, cfg)
+    for item, pct in today.change_pct.items():
+        assert (f"Supplier prices: {item.value} {pct:+d}%" in notes) == (pct != 0)
+    sugar = cfg.items[Item.SUGAR].pack_price
+    expected = (sugar * (100 + today.change_pct[Item.SUGAR]) + 50) // 100
+    assert todays_pack_prices(state, cfg)[Item.SUGAR] == expected
+
+
+def test_shortage_marks_lemons_up_50_percent_with_note() -> None:
+    cfg = market_cfg(shortages=True, shortage_chance=1.0)
+    prices = todays_pack_prices(make_state(), cfg)
+    assert prices[Item.LEMON] == 600
+    assert prices[Item.SUGAR] == 300
+    assert market_notes(make_state(), cfg) == ("Lemon shortage: lemons +50% today",)
+
+
+def test_shortage_is_rare_and_seeded() -> None:
+    cfg = market_cfg(shortages=True)
+    hits = [market_day(make_state(day=d), cfg).shortage for d in range(1, 201)]
+    assert 0 < hits.count(Item.LEMON) < 40
+    assert set(hits) <= {None, Item.LEMON}
+
+
+def test_plan_cost_and_bankruptcy_use_todays_prices() -> None:
+    cfg = market_cfg(shortages=True, shortage_chance=1.0)
+    assert plan_cost(make_state(), make_plan({"lemon": 1}), cfg) == 600
+    assert cost_to_make_one_cup(make_state(inventory=make_inventory(cup=1)), cfg) == 600

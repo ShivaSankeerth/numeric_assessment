@@ -37,3 +37,15 @@ taste_penalty_per_unit = 0.1  # taste lost per unit of distance from the ideal r
 reputation_rate = 0.1         # max reputation change per day
 loss_price_threshold = 0.5    # non-buyers with price_factor below this are "too expensive"
 loss_taste_threshold = 0.5    # ...else with taste below this are "bad taste"
+reputation_taste_weight = 0.6 # satisfaction = w * taste + (1 - w) * value-for-money
+reputation_neutral = 0.5      # satisfaction at which reputation doesn't move
+reputation_full_volume = 40   # cups sold for the full reputation change (fewer = scaled down)
+
+# Daily supplier prices (seeded per day). Tests disable both flags for fixed prices.
+[market]
+fluctuation = true            # each item's pack price moves by up to +/- fluctuation_pct
+fluctuation_pct = 15
+shortages = true              # a random supply shortage marks one item up
+shortage_chance = 0.08        # per day
+shortage_item = "lemon"
+shortage_markup_pct = 50
