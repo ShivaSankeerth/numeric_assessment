@@ -91,3 +91,21 @@ def make_ctx(
         cfg=cfg or default_cfg(),
     )
     return replace(ctx, **overrides)
+
+
+def cfg_with(
+    cfg: Config | None = None,
+    *,
+    event_chances: dict[str, float] | None = None,
+    **weather_overrides: Any,
+) -> Config:
+    """Config copy with event base chances and/or weather fields overridden.
+
+    `cfg_with(event_chances={"heat_wave": 1.0}, accuracy=1.0)` forces a heat wave and a
+    perfectly accurate forecast.
+    """
+    cfg = cfg or default_cfg()
+    events = dict(cfg.events)
+    for event_id, chance in (event_chances or {}).items():
+        events[event_id] = replace(events[event_id], base_chance=chance)
+    return replace(cfg, events=events, weather=replace(cfg.weather, **weather_overrides))
