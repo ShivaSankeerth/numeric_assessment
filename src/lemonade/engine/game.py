@@ -12,6 +12,7 @@ from lemonade.engine import inventory, market, weather
 from lemonade.engine.config import Config
 from lemonade.engine.errors import GameOverError
 from lemonade.engine.models import DayPlan, DayResult, GameState, Inventory, PlanPreview
+from lemonade.engine.recipes import effective_recipe
 from lemonade.engine.rng import day_rng
 from lemonade.engine.simulation import simulate_day
 from lemonade.engine.types import GameStatus
@@ -68,6 +69,8 @@ def preview_plan(state: GameState, plan: DayPlan, cfg: Config) -> PlanPreview:
         cost=cost,
         cash_after=state.cash - cost,
         cups_makeable=inventory.cups_makeable(
-            stocked.inventory, plan.recipe, cfg.game.cups_per_pitcher
+            stocked.inventory,
+            effective_recipe(stocked, plan.recipe, cfg),
+            cfg.game.cups_per_pitcher,
         ),
     )

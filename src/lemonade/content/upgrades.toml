@@ -6,3 +6,21 @@ name = "Cooler"
 cost = 1500
 description = "Keeps 50% of leftover ice overnight."
 ice_retention = 0.5
+
+[juicer]
+name = "Juicer"
+cost = 1200
+description = "Squeezes 25% more juice from each lemon (fewer lemons per pitcher)."
+lemon_yield_bonus = 0.25
+
+[sign]
+name = "Sign"
+cost = 800
+description = "A bright sign that draws 15% more foot traffic."
+traffic_mul = 1.15
+
+[umbrella]
+name = "Umbrella"
+cost = 600
+description = "Halves the foot-traffic penalty on rainy and stormy days."
+rain_penalty_kept = 0.5       # fraction of the rain/storm traffic loss that still applies

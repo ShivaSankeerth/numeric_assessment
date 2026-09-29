@@ -12,6 +12,7 @@ from lemonade.engine import inventory, market, weather
 from lemonade.engine.config import Config
 from lemonade.engine.demand import DemandBreakdown, compute_demand, reputation_delta
 from lemonade.engine.models import DayContext, DayPlan, DayResult, Effect, GameState, Inventory
+from lemonade.engine.recipes import effective_recipe
 from lemonade.engine.registry import EVENTS, MODIFIERS, GameEvent, active_upgrades
 from lemonade.engine.rng import day_rng
 from lemonade.engine.sales import SalesOutcome, sell
@@ -68,7 +69,8 @@ def _run_sales(ctx: DayContext, demand: DemandBreakdown, *, closed: bool) -> Sal
     if closed:
         return _closed_sales(ctx)
     rng = day_rng(ctx.state.seed, ctx.state.day, "sales")
-    return sell(demand.customers, demand, ctx.state.inventory, ctx.plan.recipe, ctx.cfg, rng)
+    recipe = effective_recipe(ctx.state, ctx.plan.recipe, ctx.cfg)
+    return sell(demand.customers, demand, ctx.state.inventory, recipe, ctx.cfg, rng)
 
 
 def _upkeep(ctx: DayContext, inv: Inventory) -> tuple[Inventory, int, dict[Item, int]]:

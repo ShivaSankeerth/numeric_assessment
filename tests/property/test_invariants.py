@@ -8,6 +8,7 @@ from lemonade.engine.errors import LemonadeError
 from lemonade.engine.game import new_game, play_day
 from lemonade.engine.inventory import cups_makeable
 from lemonade.engine.models import DayPlan, DayResult, GameState
+from lemonade.engine.recipes import effective_recipe
 from lemonade.engine.types import GameStatus, Item
 from strategies import plan_sequences, seeds
 
@@ -43,7 +44,8 @@ def test_cash_never_negative(seed: int, plans: list[DayPlan]) -> None:
 def test_cannot_sell_more_than_makeable(seed: int, plans: list[DayPlan]) -> None:
     for before, plan, _, result in play(seed, plans):
         stocked, _ = market.apply_purchases(before, plan, CFG)
-        limit = cups_makeable(stocked.inventory, plan.recipe, CFG.game.cups_per_pitcher)
+        recipe = effective_recipe(stocked, plan.recipe, CFG)
+        limit = cups_makeable(stocked.inventory, recipe, CFG.game.cups_per_pitcher)
         assert result.cups_sold <= limit
 
 
