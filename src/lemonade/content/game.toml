@@ -1,0 +1,40 @@
+# Core game rules and weather. Money is integer cents.
+
+[game]
+starting_cash = 2000          # $20.00
+starting_reputation = 0.3     # 0.0..1.0
+cups_per_pitcher = 12         # assumption A1
+price_limits = [5, 1000]      # allowed price per cup, cents
+
+[game.recipe_limits]          # allowed [min, max] per recipe field
+lemons = [1, 12]              # per pitcher
+sugar = [0, 12]               # per pitcher
+ice = [0, 10]                 # per cup
+
+[weather]
+accuracy = 0.7                # chance the forecast is exactly right (A5)
+temp_noise = 5                # +/- degrees F when the forecast is right
+
+[weather.forecast_weights]    # relative chance of each forecast
+sunny = 35
+hot = 15
+cloudy = 25
+rainy = 18
+storm = 7
+
+[weather.temp_range]          # [low, high] degrees F
+storm = [50, 65]
+rainy = [52, 68]
+cloudy = [60, 75]
+sunny = [72, 85]
+hot = [86, 100]
+
+[weather.traffic]             # foot traffic multiplier (weather modifier)
+storm = 0.2
+rainy = 0.45
+cloudy = 0.8
+sunny = 1.0
+hot = 1.3
+
+[weather.price_tolerance]     # fair-price multiplier; missing = 1.0
+hot = 1.2

@@ -1,0 +1,8 @@
+# Upgrades. Every id here must have a handler in engine/upgrades/.
+# Keys other than name/cost/description are handler params.
+
+[cooler]
+name = "Cooler"
+cost = 1500
+description = "Keeps 50% of leftover ice overnight."
+ice_retention = 0.5

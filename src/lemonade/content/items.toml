@@ -1,0 +1,39 @@
+# Supplies and the demand model. Prices are integer cents per pack.
+
+[items.lemon]
+pack_size = 12
+pack_price = 400
+shelf_life_days = 5
+tiers = [{ min_packs = 3, discount_pct = 10 }, { min_packs = 6, discount_pct = 20 }]
+
+[items.sugar]                 # unit: cup of sugar
+pack_size = 8
+pack_price = 300
+tiers = [{ min_packs = 3, discount_pct = 10 }, { min_packs = 6, discount_pct = 20 }]
+
+[items.ice]                   # unit: cube
+pack_size = 100
+pack_price = 150
+melts = true
+
+[items.cup]                   # unit: paper cup
+pack_size = 50
+pack_price = 250
+
+# Demand model (see CLAUDE.md section 7). Balancing never touches code.
+[demand]
+base_fair_price = 50          # cents; the price customers consider fair before effects
+base_prob = 0.1               # buy chance floor
+prob_scale = 0.8              # weight of price * taste * reputation
+reputation_offset = 0.5       # buy_prob uses (reputation_offset + reputation)
+max_buy_prob = 0.95           # cap before BUY_PROB multipliers
+max_price_factor = 1.2        # cap on how much a cheap price helps
+ideal_lemons = 6              # per pitcher
+ideal_sugar = 4               # per pitcher
+ideal_ice_base = 3            # ice per cup at ideal_ice_temp_f
+ideal_ice_temp_f = 75
+ideal_ice_per_10f = 1         # extra ideal ice per 10 degrees above ideal_ice_temp_f
+taste_penalty_per_unit = 0.1  # taste lost per unit of distance from the ideal recipe
+reputation_rate = 0.1         # max reputation change per day
+loss_price_threshold = 0.5    # non-buyers with price_factor below this are "too expensive"
+loss_taste_threshold = 0.5    # ...else with taste below this are "bad taste"

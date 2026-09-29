@@ -1,0 +1,6 @@
+# Random events. Keys other than name/base_chance are event params.
+
+[heat_wave]
+name = "Heat wave"
+base_chance = 0.15            # per day, only on sunny/hot days
+traffic_mul = 1.4

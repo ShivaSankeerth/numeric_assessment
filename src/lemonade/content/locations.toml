@@ -1,0 +1,7 @@
+# Stand locations. rent is charged up front each day (cents).
+
+[park]
+name = "Park"
+base_traffic = 100
+rent = 0
+description = "A quiet park. Steady traffic, no rent."
