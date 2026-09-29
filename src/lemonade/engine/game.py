@@ -1,6 +1,6 @@
 """Game facade: the only entry points the UI and bots need.
 
-`play_day` = status guard -> `simulation.simulate_day` -> `end_day` (bankruptcy, later win and
+`play_day` = status guard -> `simulation.simulate_day` -> `end_day` (bankruptcy, then
 achievements).
 """
 
@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from dataclasses import replace
 
-from lemonade.engine import inventory, market, weather
+from lemonade.engine import achievements, inventory, market, weather
 from lemonade.engine.config import Config
 from lemonade.engine.errors import ConfigError, GameOverError
 from lemonade.engine.models import DayPlan, DayResult, GameState, Inventory, PlanPreview
@@ -49,19 +49,24 @@ def is_bankrupt(state: GameState, cfg: Config) -> bool:
 
 
 def end_day(state: GameState, cfg: Config) -> GameState:
-    """Apply end-of-day game status (bankruptcy now; win/achievements later)."""
+    """Apply end-of-day game status: bankruptcy first, then achievements.
+
+    Newly unlocked achievement ids are added to `state.achievements` (never removed) and to the
+    last `DayResult.achievements_unlocked` in history.
+    """
     if is_bankrupt(state, cfg):
-        return replace(state, status=GameStatus.BANKRUPT)
-    return state
+        state = replace(state, status=GameStatus.BANKRUPT)
+    return achievements.unlock(state, cfg)
 
 
 def play_day(state: GameState, plan: DayPlan, cfg: Config) -> tuple[GameState, DayResult]:
     """Play one day. Raises GameOverError if the game is over, InvalidPlan/InsufficientFunds
-    if the plan is illegal (state unchanged)."""
+    if the plan is illegal (state unchanged). The returned result is `state.history[-1]`."""
     if state.status is not GameStatus.PLAYING:
         raise GameOverError(f"The game is over ({state.status.value}); start a new game")
-    new_state, result = simulate_day(state, plan, cfg)
-    return end_day(new_state, cfg), result
+    new_state, _ = simulate_day(state, plan, cfg)
+    final = end_day(new_state, cfg)
+    return final, final.history[-1]  # includes achievements_unlocked
 
 
 def preview_plan(state: GameState, plan: DayPlan, cfg: Config) -> PlanPreview:

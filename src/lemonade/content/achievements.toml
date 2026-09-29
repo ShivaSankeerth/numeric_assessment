@@ -1,0 +1,52 @@
+# Achievements, checked at the end of every day (game.end_day). Never removed once unlocked.
+# kind: cash_at_least (cents, end-of-day cash) | days_survived (days played without going
+# bankrupt) | cups_sold_total (all days) | perfect_recipe (a day's taste score >= threshold
+# with at least one cup sold). Table order is display order.
+
+[first_sale]
+name = "Open for Business"
+description = "Sell your first cup of lemonade."
+kind = "cups_sold_total"
+threshold = 1
+
+[hundred_cups]
+name = "Neighborhood Favorite"
+description = "Sell 100 cups in total."
+kind = "cups_sold_total"
+threshold = 100
+
+[thousand_cups]
+name = "Lemonade Legend"
+description = "Sell 1,000 cups in total."
+kind = "cups_sold_total"
+threshold = 1000
+
+[perfect_recipe]
+name = "Perfect Pitcher"
+description = "Sell lemonade with a perfect taste score."
+kind = "perfect_recipe"
+threshold = 0.99
+
+[one_week]
+name = "Survived a Week"
+description = "Stay in business for 7 days."
+kind = "days_survived"
+threshold = 7
+
+[one_month]
+name = "Summer Season"
+description = "Stay in business for 30 days."
+kind = "days_survived"
+threshold = 30
+
+[pocket_money]
+name = "Pocket Money"
+description = "End a day with $50.00 or more."
+kind = "cash_at_least"
+threshold = 5000
+
+[tycoon]
+name = "Tycoon"
+description = "End a day with $200.00 or more."
+kind = "cash_at_least"
+threshold = 20000

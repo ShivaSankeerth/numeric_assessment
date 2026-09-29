@@ -14,9 +14,9 @@ from pathlib import Path
 from typing import Any
 
 from lemonade.engine.errors import ConfigError
-from lemonade.engine.types import Cents, Item, Weather
+from lemonade.engine.types import AchievementKind, Cents, Item, Weather
 
-CONTENT_FILES = ("game", "items", "upgrades", "events", "locations")
+CONTENT_FILES = ("game", "items", "upgrades", "events", "locations", "achievements")
 
 
 @dataclass(frozen=True, slots=True)
@@ -70,6 +70,14 @@ class DemandConfig:
     reputation_taste_weight: float
     reputation_neutral: float
     reputation_full_volume: int
+
+
+@dataclass(frozen=True, slots=True)
+class AchievementConfig:
+    name: str
+    description: str
+    kind: AchievementKind
+    threshold: float  # cents / days / cups / taste score, depending on kind
 
 
 @dataclass(frozen=True, slots=True)
@@ -154,6 +162,7 @@ class Config:
     market: MarketConfig
     calendar: CalendarConfig
     difficulties: Mapping[str, DifficultyConfig]  # must include "normal"
+    achievements: Mapping[str, AchievementConfig]  # in display (TOML) order
 
 
 Table = Mapping[str, Any]
@@ -361,6 +370,22 @@ def _parse_events(t: Table) -> dict[str, EventConfig]:
     }
 
 
+def _parse_achievements(t: Table) -> dict[str, AchievementConfig]:
+    kinds = {k.value for k in AchievementKind}
+    out: dict[str, AchievementConfig] = {}
+    for ach_id, a in t.items():
+        kind = _get(a, "kind", ach_id)
+        if kind not in kinds:
+            raise ConfigError(f"'{ach_id}.kind' must be one of {sorted(kinds)}, got {kind!r}")
+        out[ach_id] = AchievementConfig(
+            name=str(_get(a, "name", ach_id)),
+            description=str(a.get("description", "")),
+            kind=AchievementKind(kind),
+            threshold=_num(a, "threshold", ach_id),
+        )
+    return out
+
+
 def parse_config(raw: Mapping[str, Table]) -> Config:
     """Build a `Config` from parsed TOML tables keyed by file stem (game, items, ...).
 
@@ -381,6 +406,7 @@ def parse_config(raw: Mapping[str, Table]) -> Config:
         market=_parse_market(raw["items"]),
         calendar=_parse_calendar(raw["game"]),
         difficulties=_parse_difficulties(raw["game"], game.starting_cash),
+        achievements=_parse_achievements(raw["achievements"]),
     )
 
 

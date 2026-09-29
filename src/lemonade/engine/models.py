@@ -118,6 +118,7 @@ class DayResult:
     taste_score: float = 0.0
     buy_prob: float = 0.0
     cash_end: Cents = 0  # cash at the end of this day (for charts / stats)
+    achievements_unlocked: tuple[str, ...] = ()  # achievement ids first unlocked this day
 
 
 @dataclass(frozen=True, slots=True)

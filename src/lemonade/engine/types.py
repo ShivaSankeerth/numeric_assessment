@@ -46,3 +46,10 @@ class GameStatus(StrEnum):
     PLAYING = "playing"
     BANKRUPT = "bankrupt"
     WON = "won"
+
+
+class AchievementKind(StrEnum):
+    CASH_AT_LEAST = "cash_at_least"
+    DAYS_SURVIVED = "days_survived"
+    CUPS_SOLD_TOTAL = "cups_sold_total"
+    PERFECT_RECIPE = "perfect_recipe"
