@@ -4,3 +4,12 @@
 name = "Heat wave"
 base_chance = 0.15            # per day, only on sunny/hot days
 traffic_mul = 1.4
+
+[storm]
+name = "Storm closure"
+base_chance = 0.5             # per day, only when the actual weather is a storm
+
+[festival]
+name = "Town festival"
+base_chance = 0.05            # per day, any weather except storms
+traffic_mul = 1.5
