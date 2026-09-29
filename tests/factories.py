@@ -10,6 +10,7 @@ from typing import Any
 from lemonade.engine.config import Config, load_config
 from lemonade.engine.models import (
     Batch,
+    DayContext,
     DayPlan,
     Forecast,
     GameState,
@@ -68,3 +69,25 @@ def make_plan(buy: dict[str, int] | None = None, **overrides: Any) -> DayPlan:
         price_per_cup=50,
     )
     return replace(plan, **overrides)
+
+
+def make_ctx(
+    state: GameState | None = None,
+    plan: DayPlan | None = None,
+    weather: Weather = Weather.SUNNY,
+    temp_f: int = 80,
+    cfg: Config | None = None,
+    **overrides: Any,
+) -> DayContext:
+    """A DayContext for testing plugins and demand in isolation."""
+    ctx = DayContext(
+        state=state or make_state(),
+        plan=plan or make_plan(),
+        weather=weather,
+        temp_f=temp_f,
+        day_of_week=0,
+        holiday=None,
+        rng=fixed_rng(),
+        cfg=cfg or default_cfg(),
+    )
+    return replace(ctx, **overrides)
