@@ -33,9 +33,11 @@ class Summary:
     invalid_plans: int  # plans the engine rejected (replaced by an empty plan)
 
 
-def play_game(strategy: Strategy, seed: int, days: int, cfg: Config) -> tuple[GameState, int]:
+def play_game(
+    strategy: Strategy, seed: int, days: int, cfg: Config, difficulty: str = "normal"
+) -> tuple[GameState, int]:
     """Play up to `days` days. Returns (final state, number of rejected plans)."""
-    state = game.new_game(seed, cfg)
+    state = game.new_game(seed, cfg, difficulty)
     rejected = 0
     for _ in range(days):
         if state.status is not GameStatus.PLAYING:
@@ -51,10 +53,12 @@ def play_game(strategy: Strategy, seed: int, days: int, cfg: Config) -> tuple[Ga
     return state, rejected
 
 
-def run_games(name: str, games: int, days: int, seed_start: int, cfg: Config) -> Summary:
+def run_games(
+    name: str, games: int, days: int, seed_start: int, cfg: Config, difficulty: str = "normal"
+) -> Summary:
     """Play `games` seeded games (seeds seed_start..) with one strategy and summarise them."""
     strategy = STRATEGIES[name]
-    finals = [play_game(strategy, seed_start + i, days, cfg) for i in range(games)]
+    finals = [play_game(strategy, seed_start + i, days, cfg, difficulty) for i in range(games)]
     states = [s for s, _ in finals]
     cash = [s.cash for s in states] or [0]
     n = max(1, games)
@@ -94,10 +98,14 @@ def main(argv: list[str] | None = None) -> None:
     parser.add_argument("--strategy", choices=[*STRATEGIES, "all"], default="all")
     parser.add_argument("--days", type=int, default=30)
     parser.add_argument("--seed-start", type=int, default=0)
-    args = parser.parse_args(argv)
     cfg = load_config()
+    levels = list(getattr(cfg, "difficulties", None) or ["normal"])
+    parser.add_argument("--difficulty", choices=levels, default="normal")
+    args = parser.parse_args(argv)
     names = list(STRATEGIES) if args.strategy == "all" else [args.strategy]
-    summaries = [run_games(n, args.games, args.days, args.seed_start, cfg) for n in names]
+    summaries = [
+        run_games(n, args.games, args.days, args.seed_start, cfg, args.difficulty) for n in names
+    ]
     console = Console()
     console.print(report(summaries))
     rejected = sum(s.invalid_plans for s in summaries)

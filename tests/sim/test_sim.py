@@ -57,3 +57,8 @@ def test_cli_prints_a_report(capsys: pytest.CaptureFixture[str]) -> None:
 def test_cli_rejects_unknown_strategy() -> None:
     with pytest.raises(SystemExit):
         runner.main(["--strategy", "nope"])
+
+
+def test_cli_difficulty_option(capsys: pytest.CaptureFixture[str]) -> None:
+    runner.main(["--games", "2", "--days", "2", "--strategy", "greedy", "--difficulty", "hard"])
+    assert "greedy" in capsys.readouterr().out
