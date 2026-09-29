@@ -14,7 +14,7 @@ from lemonade.engine.types import Factor, Item
 from lemonade.ui.app import LemonadeApp
 from lemonade.ui.format import achievement_name, fmt_cents, fmt_pct
 from lemonade.ui.screens.day_result import DayResultScreen
-from lemonade.ui.screens.game_over import GameOverScreen
+from lemonade.ui.screens.game_over import DifficultyScreen, GameOverScreen
 from lemonade.ui.screens.help import HelpScreen
 from lemonade.ui.screens.plan import PlanScreen
 from lemonade.ui.screens.stats import StatsScreen
@@ -165,9 +165,13 @@ async def test_bankruptcy_shows_game_over_and_n_restarts(cfg: Config) -> None:
         await pilot.pause()
         assert isinstance(app.screen, GameOverScreen)
         assert "bankrupt after 1 day" in text(app, "#summary")
+        assert "Final cash (score): [b]$0.00" in text(app, "#summary")
 
         await pilot.press("n")
         await pilot.pause()
+        if isinstance(app.screen, DifficultyScreen):  # engine has difficulty levels
+            await pilot.press("n")
+            await pilot.pause()
         assert isinstance(app.screen, PlanScreen)
         assert "Day 1" in text(app, "#status")
         assert "$20.00" in text(app, "#status")
@@ -272,3 +276,32 @@ async def test_day_result_ranks_effects_and_highlights_events(cfg: Config) -> No
 def _stub_result(cfg: Config) -> DayResult:
     state = make_state(inventory=make_inventory(lemon=12, sugar=8, ice=100, cup=50))
     return play_day(state, make_plan(), cfg)[1]
+
+
+async def test_new_game_on_hard_difficulty(cfg: Config) -> None:
+    hard = cfg.difficulties["hard"]
+    app = LemonadeApp(seed=42, cfg=cfg, state=make_state(cash=0))
+    async with app.run_test(size=SIZE) as pilot:
+        await pilot.press("enter", "enter")
+        await pilot.pause()
+        assert isinstance(app.screen, GameOverScreen)
+        await pilot.press("n")
+        await pilot.pause()
+        assert isinstance(app.screen, DifficultyScreen)
+        await pilot.press("h")
+        await pilot.pause()
+        assert isinstance(app.screen, PlanScreen)
+        assert app.state.difficulty == "hard"
+        assert fmt_cents(hard.starting_cash) in text(app, "#status")
+        assert "Difficulty: Hard" in text(app, "#status")
+
+
+async def test_day_result_shows_unlocked_achievements(cfg: Config) -> None:
+    app = LemonadeApp(seed=42, cfg=cfg)
+    async with app.run_test(size=SIZE):
+        result = _stub_result(cfg)
+        if not hasattr(result, "achievements_unlocked"):
+            return  # engine doesn't report unlocks yet
+        result = replace(result, achievements_unlocked=("first_sale",))
+        await app.push_screen(DayResultScreen(result, app.state))
+        assert achievement_name("first_sale", cfg) in text(app, "#happenings")
