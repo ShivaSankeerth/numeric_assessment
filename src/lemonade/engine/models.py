@@ -117,6 +117,7 @@ class DayResult:
     consumed: dict[Item, int] = field(default_factory=dict)  # units used by sales
     taste_score: float = 0.0
     buy_prob: float = 0.0
+    cash_end: Cents = 0  # cash at the end of this day (for charts / stats)
 
 
 @dataclass(frozen=True, slots=True)

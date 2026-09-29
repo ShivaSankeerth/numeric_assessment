@@ -23,6 +23,14 @@ def todays_pack_prices(state: GameState, cfg: Config) -> dict[Item, Cents]:
     return {item: item_cfg.pack_price for item, item_cfg in cfg.items.items()}
 
 
+def market_notes(state: GameState, cfg: Config) -> tuple[str, ...]:
+    """Player-facing notes about today's supplier prices (e.g. "Lemon shortage: lemons +50%").
+
+    Shown on the Shop tab before buying. Empty until price fluctuation / shortages exist.
+    """
+    return ()
+
+
 def discount_pct(item: Item, packs: int, cfg: Config) -> int:
     """Bulk discount (whole percent) for buying `packs` packs: the best tier reached."""
     pct = 0

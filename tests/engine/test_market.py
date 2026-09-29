@@ -9,6 +9,7 @@ from lemonade.engine.market import (
     apply_purchases,
     cost_to_make_one_cup,
     discount_pct,
+    market_notes,
     plan_cost,
     purchase_cost,
     todays_pack_prices,
@@ -106,3 +107,7 @@ def test_cost_to_make_one_cup_sums_missing_packs(
 ) -> None:
     state = replace(make_state(), inventory=make_inventory(**counts))
     assert cost_to_make_one_cup(state, cfg) == expected
+
+
+def test_market_notes_empty_without_fluctuation(cfg: Config) -> None:
+    assert market_notes(make_state(), cfg) == ()

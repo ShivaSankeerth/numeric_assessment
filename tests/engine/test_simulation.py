@@ -22,6 +22,7 @@ def test_day_advances_and_records_history(cfg: Config) -> None:
     assert new.forecast == generate_forecast(day_rng(state.seed, 2, "forecast"), cfg)
     assert result.revenue == result.cups_sold * 50
     assert result.profit == new.cash - state.cash
+    assert result.cash_end == new.cash
 
 
 def test_purchases_are_charged_and_stocked(cfg: Config) -> None:

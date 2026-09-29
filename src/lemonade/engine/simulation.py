@@ -140,6 +140,7 @@ def simulate_day(state: GameState, plan: DayPlan, cfg: Config) -> tuple[GameStat
     result = replace(
         result,
         profit=cash - state.cash,
+        cash_end=cash,
         ice_melted=melted,
         spoiled=spoiled,
         events=tuple(messages),
