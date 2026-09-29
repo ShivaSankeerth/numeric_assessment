@@ -2,6 +2,6 @@
 
 [park]
 name = "Park"
-base_traffic = 100
+base_traffic = 60            # tuned with lemonade-sim (see README "Balance")
 rent = 0
 description = "A quiet park. Steady traffic, no rent."

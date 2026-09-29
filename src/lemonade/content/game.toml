@@ -84,5 +84,5 @@ supply_price_pct = 100
 name = "Hard"
 description = "Less cash, quieter streets, pricier supplies."
 starting_cash = 1500
-traffic_mul = 0.85
-supply_price_pct = 115
+traffic_mul = 0.9
+supply_price_pct = 110

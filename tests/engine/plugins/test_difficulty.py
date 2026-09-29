@@ -31,19 +31,19 @@ def test_unknown_difficulty_rejected(cfg: Config) -> None:
 
 def test_traffic_effect_with_reason() -> None:
     (effect,) = difficulty.effects(make_ctx(state=make_state(difficulty="hard")))
-    assert (effect.factor, effect.op, effect.value) == (Factor.TRAFFIC, "mul", 0.85)
-    assert effect.reason == "Hard difficulty: -15% foot traffic"
+    assert (effect.factor, effect.op, effect.value) == (Factor.TRAFFIC, "mul", 0.9)
+    assert effect.reason == "Hard difficulty: -10% foot traffic"
     assert difficulty.effects(make_ctx(state=make_state(difficulty="normal"))) == []
 
 
 def test_supplier_prices_scale_with_difficulty(cfg: Config) -> None:
     hard = todays_pack_prices(make_state(difficulty="hard"), cfg)
     easy = todays_pack_prices(make_state(difficulty="easy"), cfg)
-    assert hard[Item.LEMON] == 460 and easy[Item.LEMON] == 360
-    assert hard[Item.ICE] == 173  # 172.5 rounds half up
+    assert hard[Item.LEMON] == 440 and easy[Item.LEMON] == 360
+    assert hard[Item.ICE] == 165  # 150 * 1.10
     plan = make_plan({"lemon": 1})
-    assert plan_cost(make_state(difficulty="hard"), plan, cfg) == 460
+    assert plan_cost(make_state(difficulty="hard"), plan, cfg) == 440
     assert market_notes(make_state(difficulty="hard"), cfg) == (
-        "Hard difficulty: all supplies +15%",
+        "Hard difficulty: all supplies +10%",
     )
     assert market_notes(make_state(), cfg) == ()

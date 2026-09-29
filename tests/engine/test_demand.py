@@ -101,7 +101,7 @@ def test_compute_demand_applies_effects(cfg: Config) -> None:
         eff(Factor.TASTE, "add", -0.5),
     )
     b = compute_demand(ctx, effects)
-    assert b.customers == 150
+    assert b.customers == int(cfg.locations["park"].base_traffic * 1.5)
     assert b.fair_price == pytest.approx(60)
     assert b.price_factor == pytest.approx(1.0)
     assert b.taste == pytest.approx(0.5)
