@@ -191,3 +191,29 @@ HelpScreen {
     background: $panel;
     padding: 1 2;
 }
+
+/* ---- Difficulty picker ---- */
+
+DifficultyScreen {
+    align: center middle;
+    background: black 60%;
+}
+
+#difficulty-box {
+    width: 60;
+    height: auto;
+    border: round $lemon;
+    background: $panel;
+    padding: 1 2;
+}
+
+.difficulty {
+    width: 100%;
+    margin-top: 1;
+}
+
+.difficulty:focus {
+    background: $lemon;
+    color: black;
+    text-style: bold;
+}

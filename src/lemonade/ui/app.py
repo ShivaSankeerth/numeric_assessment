@@ -27,11 +27,17 @@ class LemonadeApp(App[None]):
     # type it), so q quits whenever no input is focused; Textual's ctrl+q always works.
     BINDINGS = [Binding("q", "quit", "Quit")]
 
-    def __init__(self, seed: int, cfg: Config, state: GameState | None = None) -> None:
+    def __init__(
+        self,
+        seed: int,
+        cfg: Config,
+        state: GameState | None = None,
+        difficulty: str = "normal",
+    ) -> None:
         super().__init__()
         self.seed = seed
         self.cfg = cfg
-        self.state = state or game.new_game(seed, cfg)
+        self.state = state or game.new_game(seed, cfg, difficulty)
 
     def on_mount(self) -> None:
         self.push_screen(PlanScreen())
@@ -54,24 +60,32 @@ class LemonadeApp(App[None]):
 
     def finish_day(self) -> None:
         """Leave the day result: game over if bankrupt, otherwise back to planning."""
-        if self.state.status is GameStatus.BANKRUPT:
+        if self.state.status is not GameStatus.PLAYING:
             self.switch_screen(GameOverScreen(self.state))
         else:
             self.pop_screen()
 
-    def restart(self) -> None:
+    def restart(self, difficulty: str | None = "normal") -> None:
         """Start a fresh game with the next seed and return to planning."""
+        try:
+            state = game.new_game(self.seed + 1, self.cfg, difficulty or "normal")
+        except LemonadeError as err:
+            self.notify(str(err), title="Can't start a new game", severity="error")
+            return
         self.seed += 1
-        self.state = game.new_game(self.seed, self.cfg)
+        self.state = state
         self.pop_screen()
 
 
 def main(argv: list[str] | None = None) -> None:
     parser = argparse.ArgumentParser(prog="lemonade", description="Lemonade Stand Tycoon")
     parser.add_argument("--seed", type=int, default=None, help="seed for a reproducible game")
+    cfg = load_config()
+    levels = list(getattr(cfg, "difficulties", None) or ["normal"])
+    parser.add_argument("--difficulty", choices=levels, default="normal")
     args = parser.parse_args(argv)
     seed = args.seed if args.seed is not None else random.SystemRandom().randrange(1_000_000)
-    LemonadeApp(seed=seed, cfg=load_config()).run()
+    LemonadeApp(seed=seed, cfg=cfg, difficulty=args.difficulty).run()
 
 
 if __name__ == "__main__":
