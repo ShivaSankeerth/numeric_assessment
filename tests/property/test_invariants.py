@@ -4,6 +4,7 @@ from hypothesis import given, settings
 
 from factories import default_cfg
 from lemonade.engine import market
+from lemonade.engine.config import Config, load_config
 from lemonade.engine.errors import LemonadeError
 from lemonade.engine.game import new_game, play_day
 from lemonade.engine.inventory import cups_makeable
@@ -13,18 +14,22 @@ from lemonade.engine.types import GameStatus, Item
 from strategies import plan_sequences, seeds
 
 CFG = default_cfg()
+REAL_CFG = load_config()  # fluctuating prices and shortages ON
 FAST = settings(max_examples=50, deadline=None)
 
 
-def play(seed: int, plans: list[DayPlan]) -> list[tuple[GameState, DayPlan, GameState, DayResult]]:
+Day = tuple[GameState, DayPlan, GameState, DayResult]
+
+
+def play(seed: int, plans: list[DayPlan], cfg: Config = CFG) -> list[Day]:
     """Play the plans in order; illegal plans are skipped (state must be unchanged)."""
-    state = new_game(seed, CFG)
+    state = new_game(seed, cfg)
     days = []
     for plan in plans:
         if state.status is not GameStatus.PLAYING:
             break
         try:
-            after, result = play_day(state, plan, CFG)
+            after, result = play_day(state, plan, cfg)
         except LemonadeError:
             continue
         days.append((state, plan, after, result))
@@ -77,3 +82,16 @@ def test_ice_is_zero_at_end_of_day_without_cooler(seed: int, plans: list[DayPlan
     for _, _, after, _ in play(seed, plans):
         if "cooler" not in after.upgrades:
             assert after.inventory.count(Item.ICE) == 0
+
+
+@FAST
+@given(seeds, plan_sequences)
+def test_invariants_hold_with_fluctuating_prices(seed: int, plans: list[DayPlan]) -> None:
+    for before, plan, after, result in play(seed, plans, REAL_CFG):
+        assert after.cash >= 0
+        assert result.spend == market.plan_cost(before, plan, REAL_CFG)
+        stocked, _ = market.apply_purchases(before, plan, REAL_CFG)
+        recipe = effective_recipe(stocked, plan.recipe, REAL_CFG)
+        assert result.cups_sold <= cups_makeable(
+            stocked.inventory, recipe, REAL_CFG.game.cups_per_pitcher
+        )
