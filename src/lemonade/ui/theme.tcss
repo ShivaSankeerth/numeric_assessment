@@ -1,0 +1,67 @@
+/* Lemon-yellow accent. */
+$lemon: #f5d547;
+
+Screen {
+    background: $surface;
+}
+
+.panel {
+    border: round $lemon;
+    padding: 0 1;
+    height: auto;
+    margin-bottom: 1;
+}
+
+.panel-title {
+    color: $lemon;
+    text-style: bold;
+}
+
+#plan-body {
+    height: 1fr;
+}
+
+#left {
+    width: 36;
+}
+
+#right {
+    width: 1fr;
+    padding-left: 1;
+}
+
+.field {
+    height: 3;
+}
+
+.field Label {
+    width: 22;
+    padding-top: 1;
+}
+
+.field Input {
+    width: 16;
+}
+
+#cart {
+    color: $lemon;
+    text-style: bold;
+    padding: 0 1;
+}
+
+#start {
+    margin: 1 0 0 0;
+    background: $lemon;
+    color: black;
+}
+
+#effects {
+    height: auto;
+    max-height: 14;
+}
+
+.headline {
+    text-style: bold;
+    color: $lemon;
+    padding: 1 1 0 1;
+}
