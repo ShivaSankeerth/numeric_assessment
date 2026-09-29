@@ -5,6 +5,11 @@ Screen {
     background: $surface;
 }
 
+Header {
+    background: $lemon 80%;
+    color: black;
+}
+
 .panel {
     border: round $lemon;
     padding: 0 1;
@@ -17,43 +22,112 @@ Screen {
     text-style: bold;
 }
 
+.hint {
+    color: $text-muted;
+    padding: 1 1 0 1;
+}
+
+.total {
+    color: $lemon;
+    text-style: bold;
+    padding: 1 1 0 1;
+}
+
+/* ---- Plan ---- */
+
 #plan-body {
     height: 1fr;
 }
 
 #left {
-    width: 36;
+    width: 30;
 }
 
-#right {
+#tabs {
     width: 1fr;
-    padding-left: 1;
+    margin-left: 1;
+}
+
+#tabs Tabs Underline > .underline--bar {
+    color: $lemon;
+}
+
+TabPane {
+    padding: 1 1 0 1;
 }
 
 .field {
-    height: 3;
+    height: 1;
+    margin-bottom: 1;
 }
 
-.field Label {
+.field-label {
     width: 22;
-    padding-top: 1;
 }
 
 .field Input {
-    width: 16;
+    width: 12;
 }
 
-#cart {
-    color: $lemon;
+Input.-textual-compact {
+    background: $panel;
+}
+
+Input.-textual-compact:focus {
+    background: $lemon 25%;
+}
+
+.shop-row {
+    height: 1;
+    margin-bottom: 1;
+}
+
+.shop-head {
     text-style: bold;
+    color: $lemon;
+}
+
+.c-item { width: 18; }
+.c-packs { width: 7; margin-right: 2; }
+.c-price { width: 11; }
+.c-line { width: 13; }
+.c-tier { width: 1fr; color: $text-muted; }
+
+Checkbox {
+    margin-top: 1;
+}
+
+.upgrade-desc {
+    color: $text-muted;
+    padding-left: 4;
+}
+
+#cart-bar {
+    height: 4;
+    border-top: solid $lemon 50%;
     padding: 0 1;
 }
 
+#cart {
+    width: 1fr;
+    color: $lemon;
+    text-style: bold;
+    padding-top: 1;
+}
+
 #start {
-    margin: 1 0 0 0;
     background: $lemon;
     color: black;
+    text-style: bold;
+    min-width: 16;
 }
+
+#start:disabled {
+    background: $panel;
+    color: $text-disabled;
+}
+
+/* ---- Day result / game over ---- */
 
 #effects {
     height: auto;
