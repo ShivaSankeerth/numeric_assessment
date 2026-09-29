@@ -57,10 +57,13 @@ def make_state(cfg: Config | None = None, **overrides: Any) -> GameState:
     return replace(state, **overrides)
 
 
-def make_plan(purchases: dict[str, int] | None = None, **overrides: Any) -> DayPlan:
-    """`make_plan({"lemon": 1, "cup": 1}, price_per_cup=75)`; defaults: no purchases, 50c."""
+def make_plan(buy: dict[str, int] | None = None, **overrides: Any) -> DayPlan:
+    """`make_plan({"lemon": 1, "cup": 1}, price_per_cup=75)`: `buy` maps item -> packs.
+
+    Defaults: no purchases, default recipe, 50c. Pass `purchases=` to set raw Purchase tuples.
+    """
     plan = DayPlan(
-        purchases=tuple(Purchase(Item(k), v) for k, v in (purchases or {}).items()),
+        purchases=tuple(Purchase(Item(k), v) for k, v in (buy or {}).items()),
         recipe=Recipe(),
         price_per_cup=50,
     )
