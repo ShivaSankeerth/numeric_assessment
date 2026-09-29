@@ -73,12 +73,14 @@ def upgrade_label(up_id: str, cfg: Config, owned: bool) -> str:
 class PlanScreen(Screen[None]):
     BINDINGS = [
         Binding("enter", "start_day", "Start day"),
+        Binding("t", "stats", "Stats"),
+        Binding("question_mark", "help", "Help"),
         *(
             Binding(str(i), f"tab('{tab}')", tab.capitalize(), show=False)
             for i, tab in enumerate(TABS, 1)
         ),
     ]
-    # Start on the button so enter/q work immediately: Textual 8 never fires a letter binding
+    # Start on the button so enter/q/t/? work immediately: Textual 8 never fires a letter binding
     # while an Input has focus. Tab or click into inputs to edit; enter in an input still
     # starts the day (Input.Submitted).
     AUTO_FOCUS = "#start"
@@ -287,6 +289,12 @@ class PlanScreen(Screen[None]):
 
     def action_tab(self, tab: str) -> None:
         self.query_one("#tabs", TabbedContent).active = f"tab-{tab}"
+
+    def action_stats(self) -> None:
+        self.lemonade.show_stats()
+
+    def action_help(self) -> None:
+        self.lemonade.show_help()
 
     def action_start_day(self) -> None:
         try:

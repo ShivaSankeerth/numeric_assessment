@@ -139,3 +139,55 @@ Checkbox {
     color: $lemon;
     padding: 1 1 0 1;
 }
+
+.events {
+    border: round $warning;
+}
+
+/* ---- Stats ---- */
+
+#cash-chart {
+    height: 6;
+    margin: 1 0;
+}
+
+#cash-chart > .sparkline--max-color {
+    color: $lemon;
+}
+
+#cash-chart > .sparkline--min-color {
+    color: $lemon 30%;
+}
+
+#chart {
+    height: auto;
+}
+
+#stats-row {
+    height: auto;
+}
+
+#totals, #achievements {
+    width: 1fr;
+}
+
+#achievements {
+    margin-left: 1;
+}
+
+/* ---- Help ---- */
+
+HelpScreen {
+    align: center middle;
+    background: black 60%;
+}
+
+#help-box {
+    width: 84;
+    max-width: 100%;
+    height: auto;
+    max-height: 90%;
+    border: round $lemon;
+    background: $panel;
+    padding: 1 2;
+}

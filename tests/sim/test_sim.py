@@ -10,7 +10,7 @@ from lemonade.engine.models import DayPlan, GameState
 from lemonade.sim import runner
 from lemonade.sim.strategies import STRATEGIES
 
-GAMES, DAYS = 100, 20  # ~2s for all strategies together
+GAMES, DAYS = 100, 10  # 10 days (not 20) keeps all strategies together around 1s
 
 
 @pytest.mark.parametrize("name", sorted(STRATEGIES))

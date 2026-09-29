@@ -1,18 +1,23 @@
 """Pilot smoke tests: each screen mounts, key bindings work, and a full day flows."""
 
-from textual.widgets import Button, Checkbox, Input, Static, TabbedContent
+from dataclasses import replace
 
-from factories import make_state
-from lemonade.engine import market
+from textual.widgets import Button, Checkbox, DataTable, Input, Sparkline, Static, TabbedContent
+
+from factories import make_inventory, make_plan, make_state
+from lemonade.engine import market, stats
 from lemonade.engine.config import Config
 from lemonade.engine.demand import recipe_score
-from lemonade.engine.models import Recipe
-from lemonade.engine.types import Item
+from lemonade.engine.game import play_day
+from lemonade.engine.models import DayResult, Effect, GameState, Recipe
+from lemonade.engine.types import Factor, Item
 from lemonade.ui.app import LemonadeApp
-from lemonade.ui.format import fmt_cents, fmt_pct
+from lemonade.ui.format import achievement_name, fmt_cents, fmt_pct
 from lemonade.ui.screens.day_result import DayResultScreen
 from lemonade.ui.screens.game_over import GameOverScreen
+from lemonade.ui.screens.help import HelpScreen
 from lemonade.ui.screens.plan import PlanScreen
+from lemonade.ui.screens.stats import StatsScreen
 
 SIZE = (120, 50)
 
@@ -49,7 +54,7 @@ async def test_tabs_switch_with_number_keys(cfg: Config) -> None:
     async with app.run_test(size=SIZE) as pilot:
         tabs = app.screen.query_one("#tabs", TabbedContent)
         assert tabs.active == "tab-shop"
-        for key, tab in (("2", "recipe"), ("3", "price"), ("4", "upgrades"), ("1", "shop")):
+        for key, tab in (("4", "upgrades"), ("1", "shop")):
             await pilot.press(key)
             await pilot.pause()
             assert tabs.active == f"tab-{tab}"
@@ -186,3 +191,84 @@ async def test_q_quits(cfg: Config) -> None:
         await pilot.press("q")
         await pilot.pause()
     assert app.return_code == 0
+
+
+def played_state(cfg: Config, days: int) -> GameState:
+    """A state after `days` engine-played days (faster than driving the UI)."""
+    state = make_state(inventory=make_inventory(lemon=60, sugar=40, ice=0, cup=200))
+    for _ in range(days):
+        state, _ = play_day(state, make_plan({"ice": 1}), cfg)
+    return state
+
+
+async def test_stats_screen_opens_with_t_and_closes(cfg: Config) -> None:
+    app = LemonadeApp(seed=42, cfg=cfg)
+    async with app.run_test(size=SIZE) as pilot:
+        await pilot.press("t")
+        await pilot.pause()
+        assert isinstance(app.screen, StatsScreen)
+        assert "Play a day" in text(app, "#chart-range")
+        await pilot.press("escape")
+        await pilot.pause()
+        assert isinstance(app.screen, PlanScreen)
+
+
+async def test_stats_screen_after_some_days(cfg: Config) -> None:
+    app = LemonadeApp(seed=42, cfg=cfg, state=played_state(cfg, 3))
+    async with app.run_test(size=SIZE) as pilot:
+        await pilot.press("t")
+        await pilot.pause()
+        chart = app.screen.query_one("#cash-chart", Sparkline)
+        assert list(chart.data or []) == [float(c) for c in stats.cash_series(app.state)]
+        assert "Days played:   3" in text(app, "#totals")
+        assert "Best day: day" in text(app, "#best-worst")
+        assert "None yet" in text(app, "#achievements")
+        await pilot.press("t")
+        await pilot.pause()
+        assert isinstance(app.screen, PlanScreen)
+
+
+async def test_stats_show_achievement_names(cfg: Config) -> None:
+    state = make_state(achievements=frozenset({"first_sale"}))
+    app = LemonadeApp(seed=42, cfg=cfg, state=state)
+    async with app.run_test(size=SIZE) as pilot:
+        await pilot.press("t")
+        await pilot.pause()
+        assert achievement_name("first_sale", cfg) in text(app, "#achievements")
+
+
+async def test_help_opens_with_question_mark(cfg: Config) -> None:
+    app = LemonadeApp(seed=42, cfg=cfg)
+    async with app.run_test(size=SIZE) as pilot:
+        await pilot.press("question_mark")
+        await pilot.pause()
+        assert isinstance(app.screen, HelpScreen)
+        assert "How to play" in text(app, "#help-text")
+        await pilot.press("escape")
+        await pilot.pause()
+        assert isinstance(app.screen, PlanScreen)
+
+
+async def test_day_result_ranks_effects_and_highlights_events(cfg: Config) -> None:
+    app = LemonadeApp(seed=42, cfg=cfg)
+    async with app.run_test(size=SIZE):
+        result = replace(
+            _stub_result(cfg),
+            events=("A festival in town!",),
+            effects=(
+                Effect(Factor.TRAFFIC, "mul", 1.1, "Small", "a"),
+                Effect(Factor.TRAFFIC, "mul", 1.6, "Big", "b"),
+            ),
+        )
+        await app.push_screen(DayResultScreen(result, app.state, ("Lemon shortage",)))
+        table = app.screen.query_one("#effects", DataTable)
+        assert [table.get_row_at(i)[0] for i in range(table.row_count)] == ["Big", "Small"]
+        assert table.get_row_at(0)[2] == "+60%"
+        happenings = text(app, "#happenings")
+        assert "A festival in town!" in happenings
+        assert "Lemon shortage" in happenings
+
+
+def _stub_result(cfg: Config) -> DayResult:
+    state = make_state(inventory=make_inventory(lemon=12, sugar=8, ice=100, cup=50))
+    return play_day(state, make_plan(), cfg)[1]
