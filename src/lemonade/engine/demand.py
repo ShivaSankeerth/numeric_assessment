@@ -153,12 +153,29 @@ def loss_reason(b: DemandBreakdown, cfg: Config) -> LossReason:
     return LossReason.NOT_INTERESTED
 
 
-def reputation_delta(b: DemandBreakdown, cups_sold: int, cfg: Config) -> float:
-    """Placeholder reputation change: positive for tasty, fairly priced lemonade.
+def satisfaction(b: DemandBreakdown, cfg: Config) -> float:
+    """How happy today's buyers were, in [0, 1]: taste blended with value for money.
 
-    Zero if nothing was sold. Range is [-rate/2, +rate/2]; the caller clamps reputation to [0, 1].
+    satisfaction = w * taste + (1 - w) * min(price_factor, 1), w = `reputation_taste_weight`.
+    Cheaper than fair adds nothing beyond 1 (a bargain doesn't make bad lemonade good).
     """
-    if cups_sold == 0:
+    w = cfg.demand.reputation_taste_weight
+    return _clamp(w * b.taste + (1 - w) * min(b.price_factor, 1.0), 0.0, 1.0)
+
+
+def reputation_delta(b: DemandBreakdown, cups_sold: int, cfg: Config) -> float:
+    """Reputation change for the day, in [-reputation_rate, +reputation_rate].
+
+    Satisfaction above `reputation_neutral` raises reputation, below lowers it, scaled linearly so
+    satisfaction 1 gives +rate and 0 gives -rate. The change is then scaled by word of mouth:
+    min(1, cups_sold / reputation_full_volume). Zero if nothing was sold. The caller clamps
+    reputation to [0, 1].
+    """
+    if cups_sold <= 0:
         return 0.0
-    satisfaction = b.taste * min(b.price_factor, 1.0)
-    return cfg.demand.reputation_rate * (satisfaction - 0.5)
+    d = cfg.demand
+    diff = satisfaction(b, cfg) - d.reputation_neutral
+    span = (1 - d.reputation_neutral) if diff >= 0 else d.reputation_neutral
+    scaled = diff / span if span > 0 else 0.0
+    volume = min(1.0, cups_sold / d.reputation_full_volume) if d.reputation_full_volume else 1.0
+    return d.reputation_rate * scaled * volume

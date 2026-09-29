@@ -14,6 +14,7 @@ from lemonade.engine.demand import (
     price_factor,
     recipe_score,
     reputation_delta,
+    satisfaction,
     traffic,
 )
 from lemonade.engine.models import Effect, Recipe
@@ -139,3 +140,27 @@ def test_fmt_mul() -> None:
 def test_default_state_demand_is_sane(cfg: Config) -> None:
     b = compute_demand(make_ctx(state=make_state()), ())
     assert b.customers == cfg.locations["park"].base_traffic
+
+
+def test_satisfaction_blends_taste_and_value(cfg: Config) -> None:
+    assert satisfaction(breakdown(1.0, 1.0), cfg) == pytest.approx(1.0)
+    assert satisfaction(breakdown(1.2, 1.0), cfg) == pytest.approx(1.0)  # bargains cap at 1
+    assert satisfaction(breakdown(0.0, 1.0), cfg) == pytest.approx(0.6)
+    assert satisfaction(breakdown(1.0, 0.0), cfg) == pytest.approx(0.4)
+
+
+def test_reputation_delta_bounds_and_neutral_point(cfg: Config) -> None:
+    rate = cfg.demand.reputation_rate
+    full = cfg.demand.reputation_full_volume
+    assert reputation_delta(breakdown(1.0, 1.0), full, cfg) == pytest.approx(rate)
+    assert reputation_delta(breakdown(0.0, 0.0), full, cfg) == pytest.approx(-rate)
+    assert reputation_delta(breakdown(0.5, 0.5), full, cfg) == pytest.approx(0.0)
+
+
+def test_reputation_delta_scales_with_cups_sold(cfg: Config) -> None:
+    full = cfg.demand.reputation_full_volume
+    good = breakdown(1.0, 1.0)
+    assert reputation_delta(good, full // 2, cfg) == pytest.approx(
+        reputation_delta(good, full, cfg) / 2
+    )
+    assert reputation_delta(good, full * 3, cfg) == reputation_delta(good, full, cfg)
