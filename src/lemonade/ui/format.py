@@ -30,3 +30,10 @@ def parse_cents(text: str) -> Cents:
     if amount != amount.to_integral_value() or amount < 0:
         raise ValueError(f"not a valid price: {text!r}")
     return int(amount)
+
+
+def achievement_name(achievement_id: str, cfg: object) -> str:
+    """Display name for an achievement: from `cfg.achievements` when the engine provides it."""
+    entry = getattr(cfg, "achievements", {}).get(achievement_id)
+    name = getattr(entry, "name", None)
+    return name or achievement_id.replace("_", " ").capitalize()
