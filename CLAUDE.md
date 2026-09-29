@@ -389,6 +389,24 @@ Rules:
 Shared files (`models.py`, `simulation.py`, `registry.py`): only additive changes (new optional fields with
 defaults). Merge to main frequently and rebase the other lane.
 
+**Ownership exceptions:** `engine/stats.py` (derived history stats) and `[project.scripts]` in
+`pyproject.toml` belong to UI+TOOLS. Everything else under `engine/` belongs to ENGINE.
+
+**Cross-lane contracts (already on main):** the UI shows prices via `market.todays_pack_prices`, bulk
+discounts via `market.discount_pct` / `purchase_cost`, price notes via `market.market_notes`, the cart via
+`game.preview_plan`, and cash over time via `DayResult.cash_end` / `stats.cash_series`. Never read
+`cfg.items[...].pack_price` directly in the UI (prices will fluctuate).
+
+**Merge rules:**
+1. Every ~20 min: rebase on `main`, run the full pre-commit check, fast-forward merge to `main`, push;
+   the other lane then rebases.
+2. If both lanes are ready at once, ENGINE merges first.
+3. `README.md` and the section 15 checklist are edited only on `main` after a merge, never in a lane.
+4. Shared files (`models.py`, `simulation.py`, `registry.py`, `pyproject.toml`) are additive only; any
+   `simulation.py` change is called out in the commit message.
+5. After each merge, `uv run lemonade --seed 42` must still launch.
+6. Commits: short one-line conventional messages, authored by the repo owner, no co-author trailer.
+
 ---
 
 ## 15. Feature checklist (update status as you go)
