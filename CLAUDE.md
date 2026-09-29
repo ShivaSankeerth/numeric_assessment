@@ -238,7 +238,8 @@ traffic        = base_traffic[location] * Π(TRAFFIC mul) + Σ(TRAFFIC add)
 fair_price     = base_fair_price * Π(PRICE_TOLERANCE mul)
 price_factor   = clamp(1 - (price - fair_price) / fair_price, 0, 1.2)
 taste          = recipe_score(recipe, temp_f)  in [0,1]  (+ TASTE adds)
-buy_prob       = clamp(0.1 + 0.8 * price_factor * taste * (0.5 + reputation), 0, 0.95) * Π(BUY_PROB mul)
+buy_prob       = clamp(0.1 * min(price_factor, 1) + 0.8 * price_factor * taste * (0.5 + reputation), 0, 0.95)
+                 * Π(BUY_PROB mul)   # floor fades with price: nobody buys at >= 2x the fair price
 customer buys  = rng.random() < buy_prob
 ```
 

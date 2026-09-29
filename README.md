@@ -166,7 +166,8 @@ traffic      = base_traffic * Π(TRAFFIC mul) + Σ(TRAFFIC add)
 fair_price   = base_fair_price * Π(PRICE_TOLERANCE mul) + Σ(add)
 price_factor = clamp(1 - (price - fair) / fair, 0, max_price_factor)
 taste        = clamp(recipe_score * Π(TASTE mul) + Σ(TASTE add), 0, 1)
-buy_prob     = clamp(base_prob + prob_scale * price_factor * taste * (reputation_offset + reputation),
+buy_prob     = clamp(base_prob * min(price_factor, 1)
+                     + prob_scale * price_factor * taste * (reputation_offset + reputation),
                      0, max_buy_prob) * Π(BUY_PROB mul) + Σ(add)
 customer buys ⇔ rng.random() < buy_prob
 ```
@@ -177,7 +178,7 @@ All the constants are in `content/items.toml` under `[demand]`; foot traffic is 
 |---|---|---|
 | `base_traffic` (park) | 60 | Passers-by on a neutral day. The main lever for overall difficulty. |
 | `base_fair_price` | 50¢ | The price that feels fair. Raising it widens margins for good players. |
-| `base_prob` | 0.1 | Buy chance even at a bad price or taste. |
+| `base_prob` | 0.1 | Buy chance even for bad lemonade at a fair price. It fades to 0 as the price rises to 2× fair. |
 | `prob_scale` | 0.8 | How much price × taste × reputation matters. |
 | `reputation_offset` | 0.5 | Reputation's weight is (0.5 + rep), so it scales demand 0.5× to 1.5×. |
 | `max_buy_prob` | 0.95 | Cap before BUY_PROB effects. |
@@ -209,7 +210,7 @@ Current results (200 games × 30 days, median final cash from a $20 start on nor
 
 | Difficulty | naive | greedy | forecast |
 |---|---|---|---|
-| Easy | $128, 0% bankrupt | $224, 0% | $266, 0% |
+| Easy | $128, 0% bankrupt | $224, 0% | $265, 0% |
 | **Normal** | **$74, 0%** | **$132, 0%** | **$163, 0%** |
 | Hard | $31, 12% | $37, 12% | $57, 6% |
 
@@ -219,11 +220,27 @@ ones, because naive's fixed 50¢ then sits above the fair price, so the fair pri
 Traffic 60 keeps the skill order (forecast > greedy > naive). Hard went from ×0.85 traffic and
 +15% prices, where even the best bot was bankrupt 17% of the time, to ×0.9 and +10%.
 
+**The overpricing exploit (fixed).** The bots never price above the fair price, so the table
+above couldn't catch this. The original §7 formula applied the 10% `base_prob` floor at *any*
+price. A player who bought a starter kit daily and charged the $10 maximum ended 30 days with a
+median of **$1,437**, about 9× the best bot. Now the floor shrinks with the price factor and
+reaches 0 at twice the fair price. The bots' numbers barely moved (they never priced that high),
+and a fixed-price sweep shows the exploit is gone:
+
+| Fixed price (ideal recipe, 1 kit/day, 60 games) | 50¢ | 70¢ | 80¢ | $1 | $10 |
+|---|---|---|---|---|---|
+| Median cash after 30 days, before the fix | $32 | $150 | $176 | $7 | **$1,440** |
+| Median cash after 30 days, after the fix | $32 | $143 | $130 | $9 | $9 |
+
+The best fixed price is now around 70¢ (1.4× the base fair price, helped by hot days). It still
+earns less than the forecast bot ($163). `tests/sim/test_exploits.py` guards against the exploit
+coming back.
+
 To re-tune, edit the TOML and run `uv run lemonade-sim --strategy all --difficulty <level>`.
 
 ## Testing
 
-`uv run pytest -q` runs 261 tests in about 7 seconds.
+`uv run pytest -q` runs 262 tests in about 7 seconds.
 
 - **Engine unit tests** for every module and plugin. Required edge cases: bankruptcy (cash 0 and
   no cup possible → bankrupt; cash 0 but a cup possible → not bankrupt), selling out mid-day sets
@@ -241,7 +258,8 @@ To re-tune, edit the TOML and run `uv run lemonade-sim --strategy all --difficul
 - **UI tests** (Textual Pilot): each screen mounts and its keys work, a full day there and back,
   overspending and bad input show notifications, and bankruptcy → game over → new game with a
   chosen difficulty.
-- **Sim tests:** each bot plays 100 seeded games without exceptions, plus a CLI smoke test.
+- **Sim tests:** each bot plays 100 seeded games without exceptions, plus a CLI smoke test and an
+  exploit regression test (charging $10 must not beat fair pricing).
 
 `tests/factories.py` gives tests fixed supplier prices and no achievements by default, so their
 numbers are stable. Tests that cover fluctuation and achievements opt in with `market_cfg()` and
@@ -284,6 +302,8 @@ Everything else is standard library (`tomllib`, `decimal`, `random`, `dataclasse
 - **"Perfect Pitcher":** this achievement effectively needs the exact ideal recipe (taste ≥ 0.99).
 - **Balance:** it is tuned only against the bots, not real players; the fair price and reputation
   constants are the next levers.
+- **Overpricers never lose:** a player who prices far above fair sells almost nothing, but keeps
+  enough stock to "make a cup", so they are never declared bankrupt. The game just stalls.
 - **Not built (tier 3):** loans with interest; more locations with rent (beach, downtown); a second
   stand and a helper; competitor and viral-post events; save/load, high scores and a title screen;
   a 30-day challenge mode.

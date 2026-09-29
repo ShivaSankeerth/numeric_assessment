@@ -20,13 +20,19 @@ source:
 Where no reason is written down anywhere (CLAUDE.md, the plans, commit messages, the README),
 the **Why** says `TODO: my reasoning`.
 
-> **Headline finding while writing this: the demand model can be exploited.** The buy-chance
-> formula `0.1 + 0.8 × price_factor × taste × (0.5 + reputation)` never drops below 10%, whatever
-> the price or the taste. The price cap is $10. Buying a starter kit daily and charging $10 a cup
-> ends 30 days with a **median of $1,437 (0/50 games bankrupt)**. Charging 50¢ gives $33, and the
-> best balance bot, which prices at the fair price, gets $163. Overpricing doesn't even hurt
-> reputation: a perfect recipe at $10 gives a satisfaction of 0.6, above the 0.5 neutral point.
+> **Headline finding while writing this: the demand model could be exploited (fixed since).** The
+> buy-chance formula `0.1 + 0.8 × price_factor × taste × (0.5 + reputation)` never dropped below
+> 10%, whatever the price or the taste. The price cap is $10. Buying a starter kit daily and
+> charging $10 a cup ended 30 days with a **median of $1,437 (0/50 games bankrupt)**. Charging 50¢
+> gave $33, and the best balance bot, which prices at the fair price, got $163. Overpricing didn't
+> even hurt reputation: a perfect recipe at $10 gives a satisfaction of 0.6, above the 0.5 neutral
+> point.
 > See decisions 6 and 8.
+>
+> **Fixed:** the floor is now `0.1 × min(price_factor, 1)`, so it reaches 0 at twice the fair
+> price. A $10 price now ends 30 days at a median of $9, and the best fixed price is about 70¢
+> ($143, below the forecast bot's $163). The regression test is `tests/sim/test_exploits.py`,
+> and the CLAUDE.md §7 formula is updated to match.
 
 ---
 
@@ -185,14 +191,16 @@ the **Why** says `TODO: my reasoning`.
     into §7.
 - **Trade-off:**
   - It isn't realistic.
-  - **The 10% floor is exploitable** (see the headline finding). It applies at any price and
-    any taste. Together with the $10 price cap (approved decision D17), it makes "always charge
-    $10" the dominant strategy.
+  - **The 10% floor was exploitable** (see the headline finding). It applied at any price and
+    any taste, and together with the $10 price cap (approved decision D17) it made "always charge
+    $10" the dominant strategy. Fixed: the floor now fades to 0 at twice the fair price. Bad
+    lemonade at a fair price still sells to about 10% of passers-by.
   - Each lost customer is blamed on a single reason, the weakest factor (approved decision D11).
     A customer put off by *both* price and taste only counts as "too expensive".
 - **What I'd revisit:**
-  - **First priority:** make the floor shrink with the price factor (or apply only at or below
-    the fair price), and/or lower the $10 cap. Then re-run the balance.
+  - ~~Make the floor shrink with the price factor, then re-run the balance.~~ Done. The bots'
+    numbers barely moved, and the exploit is gone.
+  - Whether the $10 price cap (D17) is still needed now that overpricing sells nothing.
   - Make overpricing lower reputation even with a perfect recipe.
 - **Source:** Design (§3 principle 7, §7 formula and constants). The single-reason attribution
   and the price cap are Approved in planning (D11, D17).
@@ -244,7 +252,8 @@ the **Why** says `TODO: my reasoning`.
     were never agreed. `TODO: my reasoning` on whether they're right.
 - **Trade-off:**
   - The balance bots all price at or below the fair price, so **the balance numbers completely
-    miss the $10 exploit**.
+    missed the $10 exploit** (since fixed, decision 6). The bots still never test prices above
+    fair; the price sweep in the README does.
   - On normal, no bot ever goes bankrupt (0%). A careful human may still find normal easy.
 - **What I'd revisit:**
   - Add an "overpricer" and a "random" bot to `lemonade-sim`, fix decision 6, then re-tune.
@@ -311,7 +320,7 @@ the **Why** says `TODO: my reasoning`.
 | 3 | Bankrupt = can't afford a minimal cup | Brief, A3, D2; next-morning pricing is **build-time** |
 | 4 | Forecast ~70%, one-step misses | A5, D5; noise and weights **build-time** |
 | 5 | Packs, bulk tiers, daily prices seen before buying | Design, A2, Phase 1 plan; some values **build-time** |
-| 6 | Simple, self-explaining demand model | Design, D11, D17; **exploit found** |
+| 6 | Simple, self-explaining demand model | Design, D11, D17; **exploit found and fixed** |
 | 7 | Pay up front; fines end-of-day and never below $0; leftover pitcher thrown away | D6, D7, D12 |
 | 8 | Difficulty levels; normal tuned against bots | Design (Tier 2); values and targets **build-time** |
 | 9 | Plan screen opens on Start | **Build-time** |
