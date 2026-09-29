@@ -7,7 +7,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from lemonade.engine.models import DayResult, GameState
+from lemonade.engine.models import DayResult, Effect, GameState
 from lemonade.engine.types import Cents
 
 
@@ -50,3 +50,19 @@ def totals(state: GameState) -> Totals:
         spend=sum(r.spend for r in h),
         profit=sum(r.profit for r in h),
     )
+
+
+def effect_magnitude(effect: Effect) -> float:
+    """How strongly an effect moves its factor: |value - 1| for 'mul', |value| for 'add'."""
+    return abs(effect.value - 1) if effect.op == "mul" else abs(effect.value)
+
+
+def ranked_effects(result: DayResult) -> tuple[Effect, ...]:
+    """The day's effects, strongest first (stable for ties), for the "why?" breakdown."""
+    return tuple(sorted(result.effects, key=effect_magnitude, reverse=True))
+
+
+def sell_through(state: GameState) -> float:
+    """Share of all passers-by who bought a cup across the game (0.0 before day 1)."""
+    t = totals(state)
+    return t.cups_sold / t.customers if t.customers else 0.0
