@@ -51,8 +51,10 @@ Before every commit: `uv run ruff format . && uv run ruff check . && uv run pyte
    The UI only calls engine functions and renders returned data. The bot/simulator uses the same engine.
 2. **Money is integer cents** (`Cents = int`). Never use floats for money. Format only at the UI layer.
 3. **Deterministic randomness.** The engine never calls the global `random`. Every function that needs
-   randomness takes an `rng: random.Random`. Per-day RNG is derived as `random.Random(f"{seed}:{day}")`,
-   so any day of any game is replayable.
+   randomness takes an `rng: random.Random`. RNG is derived per day *and per purpose* with
+   `rng.day_rng(seed, day, stream)` = `random.Random(f"{seed}:{day}:{stream}")` (streams: `forecast`, `weather`,
+   `sales`, `market`, `event:<id>`), so any day of any game is replayable and a new plugin never shifts the
+   rolls of existing ones.
 4. **Immutable state.** Domain models are `@dataclass(frozen=True, slots=True)`. State transitions return
    new objects (`dataclasses.replace`). This makes tests trivial and enables undo/history.
 5. **Extensible by plugins, not by editing the core.** Demand modifiers, events, and upgrades register
@@ -356,10 +358,29 @@ Rules:
 - A1. One pitcher = 12 cups. Pitchers are made on demand during the day.
 - A2. Supplies are bought in packs, not single units.
 - A3. Bankruptcy is checked at end of day: `cash == 0` (or less than the cheapest pack needed to complete one cup)
-  **and** current inventory cannot make one cup.
+  **and** current inventory cannot make one cup. Implemented as `cash < market.cost_to_make_one_cup(...)`: the
+  cost, at today's prices, of the packs missing for a *minimal* cup (1 lemon + 1 paper cup; sugar and ice are
+  optional in a recipe), so melted ice alone never bankrupts a player.
 - A4. Purchases happen at the start of the day before selling; there is no mid-day restocking.
 - A5. Weather forecast accuracy is ~70%; actual weather may shift one step from the forecast.
-- A6. Game length is unlimited by default; "Challenge mode" is 30 days with a target cash goal.
+- A6. Game length is unlimited by default; "Challenge mode" is 30 days with a target cash goal (not built yet).
+- A7. Lemonade left in a partly sold pitcher at close is discarded; its lemons and sugar count as used.
+- A8. Every plan cost (supplies, upgrades, rent) is paid up front, so cash never goes negative. Event cash
+  changes (the inspector's fine) apply at end of day and are clamped at $0.
+- A9. Lemons are usable on the purchase day plus 4 more days (`expires_on_day = day + 5 - 1`) and spoil at the
+  end of their last day. Stock is always used oldest-expiry first (FIFO).
+- A10. A non-buyer is blamed on the weakest factor: price (price factor < 0.5), then taste (< 0.5), else "not
+  interested". After a sell-out, customers keep arriving and would-be buyers count as "sold out".
+- A11. Supplier prices (±15% daily fluctuation, lemon shortage, difficulty markup) are known before buying.
+  A lemon shortage is therefore a market condition, not an `EVENTS` plugin (events fire after purchases).
+- A12. The juicer lowers lemons used per pitcher (`ceil(lemons / 1.25)`); taste is still judged on the
+  player's recipe. An upgrade bought today works today.
+- A13. Day 1 is a Monday; Saturday and Sunday are busier. Holidays are fixed game days (4, 12, 21, 30) and
+  don't repeat.
+- A14. Normal difficulty is tuned with `lemonade-sim` so a forecast-aware player roughly 8x's the starting cash
+  in 30 days, a weather-blind one about 3.7x, and hard can bankrupt all strategies (see README "Balance").
+- A15. Textual never fires letter shortcuts while a text input has focus, so the Plan screen starts focused on
+  the Start button and `ctrl+q` always quits.
 
 ---
 
@@ -412,27 +433,27 @@ discounts via `market.discount_pct` / `purchase_cost`, price notes via `market.m
 ## 15. Feature checklist (update status as you go)
 
 **Tier 1 — must ship (by 2:15)**
-- [ ] Core loop: buy → recipe → price → simulate → report
-- [ ] Ice melts; other items carry over
-- [ ] Bankruptcy / game over
-- [ ] Weather forecast vs actual
-- [ ] Tweakable recipe + taste score + customer feedback
-- [ ] Effects breakdown ("why did I sell this much?")
-- [ ] Bulk pricing tiers
-- [ ] Lemon spoilage (FIFO)
-- [ ] Reputation
-- [ ] Upgrades: cooler, juicer, sign, umbrella
-- [ ] Events: heat wave, storm, inspector, lemon shortage, festival
-- [ ] Plan (tabs), Day result, Game over screens
-- [ ] Core + property tests, UI smoke tests
+- [x] Core loop: buy → recipe → price → simulate → report
+- [x] Ice melts; other items carry over
+- [x] Bankruptcy / game over
+- [x] Weather forecast vs actual
+- [x] Tweakable recipe + taste score + customer feedback
+- [x] Effects breakdown ("why did I sell this much?")
+- [x] Bulk pricing tiers
+- [x] Lemon spoilage (FIFO)
+- [x] Reputation
+- [x] Upgrades: cooler, juicer, sign, umbrella
+- [x] Events: heat wave, storm, inspector, lemon shortage, festival
+- [x] Plan (tabs), Day result, Game over screens
+- [x] Core + property tests, UI smoke tests
 
 **Tier 2 — next (until 2:40)**
-- [ ] Daily supplier price fluctuation
-- [ ] Day-of-week + holidays
-- [ ] Stats screen with cash chart
-- [ ] Achievements
-- [ ] Difficulty levels
-- [ ] Headless bot strategies + balance report
+- [x] Daily supplier price fluctuation
+- [x] Day-of-week + holidays
+- [x] Stats screen with cash chart
+- [x] Achievements
+- [x] Difficulty levels
+- [x] Headless bot strategies + balance report
 
 **Tier 3 — stretch (only if ahead of schedule; otherwise list as TODO in README)**
 - [ ] Loans with interest
@@ -441,7 +462,7 @@ discounts via `market.discount_pct` / `purchase_cost`, price notes via `market.m
 - [ ] Save / load (JSON), high scores, title screen
 - [ ] Challenge mode (30 days, target)
 
-- [ ] README complete (not optional — starts at 2:40)
+- [x] README complete (not optional — starts at 2:40)
 
 ---
 
