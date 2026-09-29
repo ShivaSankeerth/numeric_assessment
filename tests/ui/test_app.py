@@ -4,7 +4,7 @@ from dataclasses import replace
 
 from textual.widgets import Button, Checkbox, DataTable, Input, Sparkline, Static, TabbedContent
 
-from factories import make_inventory, make_plan, make_state
+from factories import achievements_cfg, make_inventory, make_plan, make_state
 from lemonade.engine import market, stats
 from lemonade.engine.config import Config
 from lemonade.engine.demand import recipe_score
@@ -169,12 +169,14 @@ async def test_bankruptcy_shows_game_over_and_n_restarts(cfg: Config) -> None:
 
         await pilot.press("n")
         await pilot.pause()
-        if isinstance(app.screen, DifficultyScreen):  # engine has difficulty levels
-            await pilot.press("n")
-            await pilot.pause()
+        assert isinstance(app.screen, DifficultyScreen)
+        await pilot.press("h")
+        await pilot.pause()
         assert isinstance(app.screen, PlanScreen)
+        assert app.state.difficulty == "hard"
         assert "Day 1" in text(app, "#status")
-        assert "$20.00" in text(app, "#status")
+        assert fmt_cents(cfg.difficulties["hard"].starting_cash) in text(app, "#status")
+        assert "Difficulty: Hard" in text(app, "#status")
         assert app.seed == 43
 
 
@@ -232,15 +234,6 @@ async def test_stats_screen_after_some_days(cfg: Config) -> None:
         assert isinstance(app.screen, PlanScreen)
 
 
-async def test_stats_show_achievement_names(cfg: Config) -> None:
-    state = make_state(achievements=frozenset({"first_sale"}))
-    app = LemonadeApp(seed=42, cfg=cfg, state=state)
-    async with app.run_test(size=SIZE) as pilot:
-        await pilot.press("t")
-        await pilot.pause()
-        assert achievement_name("first_sale", cfg) in text(app, "#achievements")
-
-
 async def test_help_opens_with_question_mark(cfg: Config) -> None:
     app = LemonadeApp(seed=42, cfg=cfg)
     async with app.run_test(size=SIZE) as pilot:
@@ -278,24 +271,6 @@ def _stub_result(cfg: Config) -> DayResult:
     return play_day(state, make_plan(), cfg)[1]
 
 
-async def test_new_game_on_hard_difficulty(cfg: Config) -> None:
-    hard = cfg.difficulties["hard"]
-    app = LemonadeApp(seed=42, cfg=cfg, state=make_state(cash=0))
-    async with app.run_test(size=SIZE) as pilot:
-        await pilot.press("enter", "enter")
-        await pilot.pause()
-        assert isinstance(app.screen, GameOverScreen)
-        await pilot.press("n")
-        await pilot.pause()
-        assert isinstance(app.screen, DifficultyScreen)
-        await pilot.press("h")
-        await pilot.pause()
-        assert isinstance(app.screen, PlanScreen)
-        assert app.state.difficulty == "hard"
-        assert fmt_cents(hard.starting_cash) in text(app, "#status")
-        assert "Difficulty: Hard" in text(app, "#status")
-
-
 async def test_day_result_shows_unlocked_achievements(cfg: Config) -> None:
     app = LemonadeApp(seed=42, cfg=cfg)
     async with app.run_test(size=SIZE):
@@ -305,3 +280,16 @@ async def test_day_result_shows_unlocked_achievements(cfg: Config) -> None:
         result = replace(result, achievements_unlocked=("first_sale",))
         await app.push_screen(DayResultScreen(result, app.state))
         assert achievement_name("first_sale", cfg) in text(app, "#happenings")
+
+
+async def test_stats_list_configured_achievements() -> None:
+    cfg = achievements_cfg()
+    first_id, first = next(iter(cfg.achievements.items()))
+    state = make_state(cfg, achievements=frozenset({first_id}))
+    app = LemonadeApp(seed=42, cfg=cfg, state=state)
+    async with app.run_test(size=SIZE) as pilot:
+        await pilot.press("t")
+        await pilot.pause()
+        shown = text(app, "#achievements")
+        assert f"1 of {len(cfg.achievements)} unlocked" in shown
+        assert f"★ {first.name}" in shown

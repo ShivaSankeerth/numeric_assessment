@@ -38,6 +38,17 @@ def totals_text(state: GameState) -> str:
 
 
 def achievements_text(state: GameState, cfg: Config) -> str:
+    """Every configured achievement (★ unlocked, ☆ locked); just the owned ones otherwise."""
+    catalog = getattr(cfg, "achievements", None) or {}
+    if catalog:
+        n = len(state.achievements & set(catalog))
+        lines = [f"{n} of {len(catalog)} unlocked"]
+        for key, ach in catalog.items():
+            owned = key in state.achievements
+            desc = getattr(ach, "description", "")
+            name = achievement_name(key, cfg)
+            lines.append(f"[b]★ {name}[/b]" if owned else f"[dim]☆ {name} — {desc}[/dim]")
+        return "\n".join(lines)
     if not state.achievements:
         return "None yet — keep selling!"
     return "\n".join(f"★ {achievement_name(a, cfg)}" for a in sorted(state.achievements))
